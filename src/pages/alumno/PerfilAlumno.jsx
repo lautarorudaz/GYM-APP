@@ -34,8 +34,46 @@ export default function PerfilAlumno() {
       if (p.exists()) setProfesor({ id: p.id, ...p.data() });
     }
     const notifSnap = await getDocs(query(collection(db, "notificaciones"), where("usuarioId", "==", snap.docs[0].id)));
-    setNotificaciones(notifSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const notifs = notifSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    
+    const parseFecha = (str) => {
+      if (!str) return new Date(0);
+      let d = new Date(str);
+      if (!isNaN(d.getTime())) return d;
+      try {
+        const [dPart, tPart] = str.split(", ");
+        const [day, month, year] = dPart.split("/").map(Number);
+        const parts = tPart.split(" ");
+        const [hh, mm] = parts[0].split(":").map(Number);
+        let h = hh;
+        if (parts[1] === "p." && h < 12) h += 12;
+        if (parts[1] === "a." && h === 12) h = 0;
+        return new Date(year, month - 1, day, h, mm);
+      } catch (e) { return new Date(0); }
+    };
+
+    notifs.sort((a, b) => parseFecha(b.fecha) - parseFecha(a.fecha));
+    setNotificaciones(notifs);
   };
+
+
+  const formatFecha = (iso) => {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return iso;
+      return d.toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    } catch (e) { return iso; }
+  };
+
+  const handleClickNotif = async (n) => {
+    await updateDoc(doc(db, "notificaciones", n.id), { leida: true });
+    if (n.tipo === "nuevo_mensaje") {
+      navigate("/alumno/rutina", { state: { tab: "chat" } });
+    }
+    cargarDatos();
+  };
+
 
   const enviarComentario = async () => {
     if (!comentario.trim()) return;
@@ -45,13 +83,27 @@ export default function PerfilAlumno() {
       alumnoId: miDoc.id,
       alumnoNombre: anonimo ? "Anónimo" : miDoc.nombre,
       profesorId: miDoc.profesorId,
-      fecha: new Date().toLocaleDateString("es-AR")
+      fecha: new Date().toISOString(),
+      leido: false
     });
     await crearNotificacion({
       usuarioId: miDoc.profesorId,
-      mensaje: anonimo ? "Un alumno te dejó un comentario anónimo" : `${miDoc.nombre} te dejó un nuevo comentario`,
-      tipo: "nuevo_comentario"
+      mensaje: anonimo ? "Un alumno ha dejado un comentario anónimo en tu perfil" : "Un alumno ha dejado un comentario en tu perfil",
+      tipo: "nuevo_comentario",
+      extraData: { alumnoId: miDoc.id }
     });
+
+    // Notificar al Admin
+    const adminSnap = await getDocs(query(collection(db, "usuarios"), where("rol", "==", "admin")));
+    const adminId = !adminSnap.empty ? adminSnap.docs[0].id : null;
+    if (adminId) {
+      await crearNotificacion({
+        usuarioId: adminId,
+        mensaje: `Un alumno dejó un comentario para el profesor ${profesor?.nombre || "N/A"}`,
+        tipo: "nuevo_comentario_admin"
+      });
+    }
+
     setComentario(""); setAnonimo(false); setEnviando(false);
     setModalComentario(false);
   };
@@ -86,10 +138,7 @@ export default function PerfilAlumno() {
 
         .perfil-top { display: flex; gap: 40px; align-items: flex-start; margin-bottom: 32px; }
 
-        .foto-box { width: 160px; height: 160px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #111; gap: 8px; }
-        .foto-box img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
-        .foto-sin-foto { font-family: 'DM Sans', sans-serif; font-size: 11px; color: rgba(255,255,255,0.25); letter-spacing: 1px; text-align: center; padding: 0 12px; }
-        .foto-icon { font-size: 36px; opacity: 0.2; }
+        .perfil-info { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
 
         .perfil-info { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
         .info-row { padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
@@ -186,19 +235,12 @@ export default function PerfilAlumno() {
       <div className="page-content">
 
         {/* ── PERFIL ── */}
-        <p className="section-label">Perfil de Gimnasio</p>
+          <p className="section-label">Mis datos</p>
 
-        <div className="perfil-top">
-          {/* Foto alumno */}
-          <div className="foto-box">
-            {miDoc?.foto
-              ? <img src={miDoc.foto} alt="foto" />
-              : <>
-                  <span className="foto-icon">👤</span>
-                  <span className="foto-sin-foto">Sin foto cargada</span>
-                </>
-            }
-          </div>
+          <div style={{ display: "flex", gap: 32, alignItems: "flex-start", flexWrap: "wrap", justifyContent: "center" }}>
+            <div style={{ width: 140, height: 140, borderRadius: 16, background: "#111", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 50, flexShrink: 0 }}>
+              👤
+            </div>
 
           {/* Datos */}
           <div className="perfil-info">
@@ -239,14 +281,8 @@ export default function PerfilAlumno() {
         <p className="section-label">Profesor a cargo</p>
 
         <div className="profesor-section">
-          <div className="prof-foto-box">
-            {profesor?.foto
-              ? <img src={profesor.foto} alt="foto profesor" />
-              : <>
-                  <span className="foto-icon" style={{ fontSize: 32, opacity: 0.2 }}>👤</span>
-                  <span className="foto-sin-foto">Sin foto cargada</span>
-                </>
-            }
+          <div style={{ width: 80, height: 80, borderRadius: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0, margin: "0 auto 16px" }}>
+            👤
           </div>
 
           <p className="prof-nombre">{profesor?.nombre || "Sin asignar"}</p>
@@ -359,11 +395,11 @@ export default function PerfilAlumno() {
             {notificaciones.length === 0
               ? <div className="empty-notif">No tenés notificaciones aún</div>
               : notificaciones.map(n => (
-                <div key={n.id} className="notif-item">
+                <div key={n.id} className="notif-item" onClick={() => handleClickNotif(n)} style={{ cursor: "pointer", background: n.leida ? "transparent" : "rgba(0,180,216,0.05)" }}>
                   <div className={`notif-dot ${n.leida ? "leida" : ""}`} />
-                  <div>
-                    <p className="notif-msg">{n.mensaje}</p>
-                    <p className="notif-fecha">{n.fecha}</p>
+                  <div style={{ flex: 1 }}>
+                    <p className="notif-msg" style={{ fontWeight: n.leida ? 400 : 500 }}>{n.mensaje}</p>
+                    <p className="notif-fecha">{formatFecha(n.fecha)}</p>
                   </div>
                 </div>
               ))}

@@ -5,6 +5,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { db, authSecundaria, storage } from "../../firebase";
 import { useNavigate, useLocation } from "react-router-dom";
 import { crearNotificacion } from "../../utils/notificaciones";
+import { useAuth } from "../../context/AuthContext";
 import AdminNavBar from "./AdminNavBar";
 
 const calcularEdad = (f) => {
@@ -34,14 +35,8 @@ function PerfilProfesorModal({ profesor, alumnos, comentarios, onClose, onGuarda
   const guardar = async () => {
     setGuardando(true);
     try {
-      let fotoUrl = datos.foto || "";
-      if (editFoto) {
-        const sr = ref(storage, `fotos/profesores/${profesor.id}`);
-        await uploadBytes(sr, editFoto);
-        fotoUrl = await getDownloadURL(sr);
-      }
-      await onGuardar({ ...datos, foto: fotoUrl });
-      setEditando(false); setEditFoto(null);
+      await onGuardar({ ...datos });
+      setEditando(false);
     } catch (e) { alert("Error: " + e.message); }
     setGuardando(false);
   };
@@ -57,8 +52,7 @@ function PerfilProfesorModal({ profesor, alumnos, comentarios, onClose, onGuarda
         <div style={{ padding: "22px 24px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ width: 54, height: 54, borderRadius: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>
-              {editFoto ? <img src={URL.createObjectURL(editFoto)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                : datos.foto ? <img src={datos.foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👤"}
+              👤
             </div>
             <div>
               <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, letterSpacing: 1, color: "white", lineHeight: 1 }}>{datos.nombre} {datos.apellido || ""}</p>
@@ -79,15 +73,6 @@ function PerfilProfesorModal({ profesor, alumnos, comentarios, onClose, onGuarda
         <div style={{ padding: "20px 24px" }}>
           {tab === "datos" && (
             <>
-              {editando && (
-                <div style={{ marginBottom: 16 }}>
-                  <label style={ls}>Foto</label>
-                  <label style={{ border: "2px dashed rgba(255,255,255,0.1)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background: "rgba(255,255,255,0.02)" }}>
-                    <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.35)" }}>{editFoto ? editFoto.name : "Cambiar foto — click para subir"}</span>
-                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { if (e.target.files[0]) setEditFoto(e.target.files[0]); }} />
-                  </label>
-                </div>
-              )}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
                 {[["Nombre", "nombre"], ["Apellido", "apellido"], ["DNI", "dni"], ["Nacimiento", "nacimiento", "date"], ["Edad", "edad", null, true], ["Fecha de alta", "fechaAlta"]].map(([label, key, tipo, readOnly]) => (
                   <div key={key} style={{ marginBottom: 16 }}>
@@ -176,6 +161,7 @@ export default function AdminDashboard() {
   // Leer vista inicial desde location.state (para navegación desde AlumnosAdmin)
   const [vista, setVista] = useState(location.state?.vista || "panel");
 
+  const { usuario } = useAuth();
   const [profesores, setProfesores] = useState([]);
   const [alumnos, setAlumnos] = useState([]);
   const [rutinas, setRutinas] = useState([]);
@@ -184,6 +170,7 @@ export default function AdminDashboard() {
   const [filtroBusq, setFiltroBusq] = useState("");
   const [filtroSede, setFiltroSede] = useState("");
   const [perfilModal, setPerfilModal] = useState(null);
+
   const [form, setForm] = useState({ nombre: "", apellido: "", email: "", pass: "", sedes: [], dni: "", nacimiento: "", edad: "", foto: null, fotoPreview: null });
   const [subiendoFoto, setSubiendoFoto] = useState(false);
 
@@ -192,16 +179,25 @@ export default function AdminDashboard() {
     if (location.state?.vista) setVista(location.state.vista);
   }, [location.state]);
 
+  useEffect(() => { cargarDatos(); }, []);
+
   const cargarDatos = async () => {
     const snap = await getDocs(collection(db, "usuarios"));
     const todos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
     setProfesores(todos.filter(u => u.rol === "profesor"));
     setAlumnos(todos.filter(u => u.rol === "alumno"));
+
     const rutSnap = await getDocs(collection(db, "rutinas"));
-    setRutinas(rutSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const rutsData = rutSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setRutinas(rutsData);
+
     const comSnap = await getDocs(collection(db, "comentarios"));
-    setComentarios(comSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const comsData = comSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setComentarios(comsData);
   };
+
+
 
   const cargarNotificaciones = async () => {
     const adminSnap = await getDocs(query(collection(db, "usuarios"), where("rol", "==", "admin")));
@@ -213,7 +209,8 @@ export default function AdminDashboard() {
     setNotificaciones(notifs);
   };
 
-  useEffect(() => { cargarDatos(); cargarNotificaciones(); }, []);
+
+  useEffect(() => { cargarNotificaciones(); }, []);
 
   const setFormField = (key, val) => {
     if (key === "nacimiento") setForm(f => ({ ...f, nacimiento: val, edad: calcularEdad(val) }));
@@ -231,7 +228,7 @@ export default function AdminDashboard() {
         uid: cred.user.uid, nombre: form.nombre, apellido: form.apellido,
         email: form.email, rol: "profesor", sedes: form.sedes,
         dni: form.dni, nacimiento: form.nacimiento, edad: form.edad,
-        fechaAlta: new Date().toLocaleDateString("es-AR"), foto: ""
+        fechaAlta: new Date().toLocaleDateString("es-AR")
       });
       setForm({ nombre: "", apellido: "", email: "", pass: "", sedes: [], dni: "", nacimiento: "", edad: "" });
       cargarDatos();
@@ -328,7 +325,7 @@ export default function AdminDashboard() {
               {[
                 { label: "Profesores activos", val: profesores.length },
                 { label: "Alumnos activos", val: alumnos.length, accent: true, link: "/admin/alumnos" },
-                { label: "Rutinas totales", val: rutinas.length },
+                { label: "Rutinas totales", val: new Set(rutinas.map(r => r.nombre || r.id)).size },
               ].map(s => (
                 <div key={s.label} style={{ background: "#111", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "20px 24px", cursor: s.link ? "pointer" : "default" }} onClick={() => s.link && navigate(s.link)}>
                   <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 44, color: s.accent ? "#00b4d8" : "white", lineHeight: 1, marginBottom: 4 }}>{s.val}</p>
@@ -340,7 +337,7 @@ export default function AdminDashboard() {
             {profesores.map(p => (
               <div key={p.id} style={{ background: "#111", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 18px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }} onClick={() => setPerfilModal(p)}>
                 <div style={{ width: 38, height: 38, borderRadius: 10, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {p.foto ? <img src={p.foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 17 }}>👤</span>}
+                  <span style={{ fontSize: 17 }}>👤</span>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 500, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre} {p.apellido || ""}</p>
@@ -409,7 +406,7 @@ export default function AdminDashboard() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, cursor: "pointer", minWidth: 0 }} onClick={() => setPerfilModal(p)}>
                       <div style={{ width: 48, height: 48, borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        {p.foto ? <img src={p.foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 20 }}>👤</span>}
+                        <span style={{ fontSize: 20 }}>👤</span>
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 500, color: "white", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre} {p.apellido || ""}</p>

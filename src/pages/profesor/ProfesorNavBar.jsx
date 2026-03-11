@@ -3,7 +3,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "../../firebase";
 import { useNavigate, useLocation } from "react-router-dom";
 
-export default function ProfesorNavBar({ usuario, notificaciones = [], onMarcarLeida, onMarcarTodas, vistaActual, sedeActiva, setSedeActiva }) {
+export default function ProfesorNavBar({ usuario, notificaciones = [], onMarcarLeida, onMarcarTodas, onClickNotif, vistaActual, sedeActiva, setSedeActiva }) {
     const navigate = useNavigate();
     const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
@@ -17,20 +17,20 @@ export default function ProfesorNavBar({ usuario, notificaciones = [], onMarcarL
     const enAlumnos = location.pathname === "/profesor" && vistaActual === "alumnos";
     const enEjercicios = location.pathname === "/profesor" && vistaActual === "ejercicios";
     const enRutinas = location.pathname === "/profesor" && vistaActual === "rutinas";
-    const enChat = location.pathname === "/profesor" && vistaActual === "chat";
+    const enPerfil = location.pathname === "/profesor" && vistaActual === "perfil";
 
     const irAPanel = () => { navigate("/profesor", { state: { vista: "panel" } }); setMenuOpen(false); };
     const irAAlumnos = () => { navigate("/profesor", { state: { vista: "alumnos" } }); setMenuOpen(false); };
     const irAEjercicios = () => { navigate("/profesor", { state: { vista: "ejercicios" } }); setMenuOpen(false); };
     const irARutinas = () => { navigate("/profesor", { state: { vista: "rutinas" } }); setMenuOpen(false); };
-    const irAChat = () => { navigate("/profesor", { state: { vista: "perfil" } }); setMenuOpen(false); };
+    const irAPerfil = () => { navigate("/profesor", { state: { vista: "perfil" } }); setMenuOpen(false); };
 
     const links = [
         { label: "Panel", action: irAPanel, active: enPanel },
         { label: "Alumnos", action: irAAlumnos, active: enAlumnos },
         { label: "Ejercicios", action: irAEjercicios, active: enEjercicios },
         { label: "Rutinas", action: irARutinas, active: enRutinas },
-        { label: "Perfil", action: irAChat, active: enChat },
+        { label: "Perfil", action: irAPerfil, active: enPerfil },
     ];
 
     const sedes = usuario?.sedes || [];
@@ -189,14 +189,16 @@ export default function ProfesorNavBar({ usuario, notificaciones = [], onMarcarL
                             {notificaciones.length === 0
                                 ? <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "28px 0" }}>No hay actividad aún.</p>
                                 : notificaciones.map(n => (
-                                    <div key={n.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 10px", borderRadius: 10, marginBottom: 4, background: n.leida ? "transparent" : "rgba(0,180,216,0.04)", border: n.leida ? "1px solid transparent" : "1px solid rgba(0,180,216,0.12)", transition: "background 0.2s" }}>
+                                    <div key={n.id} 
+                                        onClick={() => { onClickNotif?.(n); setNotifOpen(false); }}
+                                        style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 10px", borderRadius: 10, marginBottom: 4, background: n.leida ? "transparent" : "rgba(0,180,216,0.04)", border: n.leida ? "1px solid transparent" : "1px solid rgba(0,180,216,0.12)", transition: "background 0.2s", cursor: "pointer" }}>
                                         <div style={{ width: 7, height: 7, borderRadius: "50%", background: n.leida ? "rgba(255,255,255,0.15)" : "#00b4d8", flexShrink: 0, marginTop: 5 }} />
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "white", fontWeight: n.leida ? 400 : 500, margin: 0, lineHeight: 1.4 }}>{n.mensaje}</p>
                                             <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 3 }}>{n.fecha}</p>
                                         </div>
                                         {!n.leida && (
-                                            <button onClick={() => onMarcarLeida(n.id)}
+                                            <button onClick={(e) => { e.stopPropagation(); onMarcarLeida(n.id); }}
                                                 style={{ background: "none", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.4)", borderRadius: 6, padding: "3px 8px", fontFamily: "'DM Sans',sans-serif", fontSize: 11, cursor: "pointer", flexShrink: 0 }}>
                                                 ✓
                                             </button>

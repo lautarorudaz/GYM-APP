@@ -26,9 +26,45 @@ export default function AlumnoDashboard() {
   const cargarNotificaciones = async (alumnoId) => {
     const snap = await getDocs(query(collection(db, "notificaciones"), where("usuarioId", "==", alumnoId)));
     const notifs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    notifs.sort((a, b) => b.fecha?.localeCompare(a.fecha));
+    
+    const parseFecha = (str) => {
+      if (!str) return new Date(0);
+      let d = new Date(str);
+      if (!isNaN(d.getTime())) return d;
+      try {
+        const [dPart, tPart] = str.split(", ");
+        const [day, month, year] = dPart.split("/").map(Number);
+        const parts = tPart.split(" ");
+        const [hh, mm] = parts[0].split(":").map(Number);
+        let h = hh;
+        if (parts[1] === "p." && h < 12) h += 12;
+        if (parts[1] === "a." && h === 12) h = 0;
+        return new Date(year, month - 1, day, h, mm);
+      } catch (e) { return new Date(0); }
+    };
+
+    notifs.sort((a, b) => parseFecha(b.fecha) - parseFecha(a.fecha));
     setNotificaciones(notifs);
   };
+
+
+  const formatFecha = (iso) => {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return iso;
+      return d.toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    } catch (e) { return iso; }
+  };
+
+  const handleClickNotif = async (n) => {
+    await updateDoc(doc(db, "notificaciones", n.id), { leida: true });
+    if (n.tipo === "nuevo_mensaje") {
+      navigate("/alumno/rutina", { state: { tab: "chat" } });
+    }
+    cargarDatos();
+  };
+
 
   const marcarLeida = async (id) => {
     await updateDoc(doc(db, "notificaciones", id), { leida: true });
@@ -133,12 +169,11 @@ export default function AlumnoDashboard() {
             {notificaciones.length === 0
               ? <div className="empty-notif">No tenés notificaciones aún</div>
               : notificaciones.map(n => (
-                <div key={n.id} className="notif-item">
+                <div key={n.id} className="notif-item" onClick={() => handleClickNotif(n)} style={{ cursor: "pointer", background: n.leida ? "transparent" : "rgba(0,180,216,0.05)" }}>
                   <div className={`notif-dot ${n.leida ? "leida" : ""}`} />
-                  <div>
-                    <p className="notif-msg">{n.mensaje}</p>
-                    <p className="notif-fecha">{n.fecha}</p>
-                    {!n.leida && <button className="notif-mark" onClick={() => marcarLeida(n.id)}>Marcar como leída</button>}
+                  <div style={{ flex: 1 }}>
+                    <p className="notif-msg" style={{ fontWeight: n.leida ? 400 : 600 }}>{n.mensaje}</p>
+                    <p className="notif-fecha">{formatFecha(n.fecha)}</p>
                   </div>
                 </div>
               ))}

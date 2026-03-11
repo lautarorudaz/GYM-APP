@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { collection, getDocs, addDoc, query, where, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, query, where, doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import NavBar from "../../components/NavBar";
 import { crearNotificacion } from "../../utils/notificaciones";
 
@@ -112,6 +112,33 @@ export default function RutinaAlumno() {
   const [mensajes, setMensajes]     = useState([]);
   const [comentarios, setComentarios] = useState([]);
   const [enviando, setEnviando]     = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.tab) {
+      setTab(location.state.tab);
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    if (tab === "chat" && miDoc) {
+      const msgsNoLeidos = mensajes.filter(m => m.de === "profesor" && !m.leido);
+      if (msgsNoLeidos.length > 0) {
+        const t = setTimeout(() => {
+          Promise.all(msgsNoLeidos.map(m => updateDoc(doc(db, "chat", m.id), { leido: true })))
+            .then(() => cargarDatos());
+        }, 800);
+        return () => clearTimeout(t);
+      }
+
+      // También marcar notificaciones de mensaje como leídas
+      const notifsMsg = notificaciones.filter(n => n.tipo === "nuevo_mensaje" && !n.leida);
+      if (notifsMsg.length > 0) {
+        Promise.all(notifsMsg.map(n => updateDoc(doc(db, "notificaciones", n.id), { leida: true })))
+          .then(() => cargarDatos());
+      }
+    }
+  }, [tab, miDoc, mensajes, notificaciones]);
 
   useEffect(() => { if (usuario) cargarDatos(); }, [usuario]);
 
@@ -136,7 +163,17 @@ export default function RutinaAlumno() {
     msgs.sort((a,b) => a.fecha?.localeCompare(b.fecha));
     setMensajes(msgs);
     const notifSnap = await getDocs(query(collection(db, "notificaciones"), where("usuarioId", "==", snap.docs[0].id)));
-    setNotif(notifSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const actualNotifs = notifSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setNotif(actualNotifs.sort((a,b) => b.fecha.localeCompare(a.fecha)));
+  };
+
+  const handleClickNotif = async (n) => {
+    await updateDoc(doc(db, "notificaciones", n.id), { leida: true });
+    if (n.tipo === "nuevo_mensaje") {
+      setTab("chat");
+    }
+    setModalNotif(false);
+    cargarDatos();
   };
 
   const enviarMensaje = async () => {
@@ -150,7 +187,12 @@ export default function RutinaAlumno() {
       de: "alumno",
       fecha: new Date().toISOString()
     });
-    await crearNotificacion({ usuarioId: miDoc.profesorId, mensaje: `${miDoc.nombre} te envió un mensaje`, tipo: "nuevo_mensaje" });
+    await crearNotificacion({ 
+      usuarioId: miDoc.profesorId, 
+      mensaje: `${miDoc.nombre} te ha enviado un mensaje`, 
+      tipo: "nuevo_mensaje",
+      extraData: { alumnoId: miDoc.id }
+    });
     setMensajeChat("");
     setEnviando(false);
     cargarDatos();
@@ -495,9 +537,14 @@ export default function RutinaAlumno() {
             {notificaciones.length === 0
               ? <div className="empty-notif">No tenés notificaciones aún</div>
               : notificaciones.map(n => (
-                <div key={n.id} className="notif-item">
+                <div key={n.id} className="notif-item" 
+                  onClick={() => handleClickNotif(n)}
+                  style={{ cursor: "pointer", background: n.leida ? "transparent" : "rgba(0,180,216,0.05)" }}>
                   <div className={`notif-dot ${n.leida ? "leida" : ""}`} />
-                  <div><p className="notif-msg">{n.mensaje}</p><p className="notif-fecha">{n.fecha}</p></div>
+                  <div>
+                    <p className="notif-msg" style={{ fontWeight: n.leida ? 400 : 600 }}>{n.mensaje}</p>
+                    <p className="notif-fecha">{n.fecha}</p>
+                  </div>
                 </div>
               ))}
           </div>

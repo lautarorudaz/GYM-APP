@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 export default function AdminNavBar({ notificaciones = [], onMarcarLeida, onMarcarTodas, vistaActual }) {
     const navigate = useNavigate();
+
     const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
     const [notifOpen, setNotifOpen] = useState(false);
@@ -47,9 +48,11 @@ export default function AdminNavBar({ notificaciones = [], onMarcarLeida, onMarc
             <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,10,0.97)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 20px", height: 62, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
 
                 {/* Logo */}
-                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, letterSpacing: 3, color: "#00b4d8", cursor: "pointer", flexShrink: 0 }} onClick={irAPanel}>
-                    AnimaApp
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
+                     <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, letterSpacing: 3, color: "#00b4d8", cursor: "pointer", flexShrink: 0 }} onClick={irAPanel}>
+                        AnimaApp
+                    </span>
+                </div>
 
                 {/* Desktop nav - centro */}
                 <div className="anav-desktop">

@@ -20,7 +20,6 @@ function App() {
           <Route path="/admin" element={<ProtectedRoute rol="admin"><AdminDashboard /></ProtectedRoute>} />
           <Route path="/profesor" element={<ProtectedRoute rol="profesor"><ProfesorDashboard /></ProtectedRoute>} />
           <Route path="/alumno" element={<ProtectedRoute rol="alumno"><AlumnoDashboard /></ProtectedRoute>} />
-          <Route path="/alumno" element={<ProtectedRoute rol="alumno"><AlumnoDashboard /></ProtectedRoute>} />
 <Route path="/alumno/perfil" element={<ProtectedRoute rol="alumno"><PerfilAlumno /></ProtectedRoute>} />
 <Route path="/alumno/rutina" element={<ProtectedRoute rol="alumno"><RutinaAlumno /></ProtectedRoute>} />
 <Route path="/admin/alumnos" element={<ProtectedRoute rol="admin"><AlumnosAdmin /></ProtectedRoute>} />

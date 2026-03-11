@@ -3,8 +3,6 @@ import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from "firebase
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { db, authSecundaria } from "../../firebase";
 import { useNavigate } from "react-router-dom";
-
-
 import { crearNotificacion } from "../../utils/notificaciones";
 import AdminNavBar from "./AdminNavBar";
 
@@ -106,6 +104,7 @@ export default function AlumnosAdmin() {
   const [perfilModal, setPerfilModal] = useState(null);
   const [modalNuevo, setModalNuevo] = useState(false);
   const [form, setForm] = useState({ nombre: "", apellido: "", email: "", pass: "", sede: "", profesorId: "", dni: "", nacimiento: "", edad: "" });
+
   const [creando, setCreando] = useState(false);
 
   useEffect(() => { cargarDatos(); }, []);
@@ -113,10 +112,13 @@ export default function AlumnosAdmin() {
   const cargarDatos = async () => {
     const snap = await getDocs(collection(db, "usuarios"));
     const todos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
     setProfesores(todos.filter(u => u.rol === "profesor"));
     setAlumnos(todos.filter(u => u.rol === "alumno"));
+
     const rutSnap = await getDocs(collection(db, "rutinas"));
-    setRutinas(rutSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const rutsData = rutSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setRutinas(rutsData);
   };
 
   const setFormField = (key, val) => {
@@ -213,7 +215,7 @@ export default function AlumnosAdmin() {
             { label: "Edison", val: alumnos.filter(a => a.sede === "Edison").length },
             { label: "Moreno", val: alumnos.filter(a => a.sede === "Moreno").length },
             { label: "GSM", val: alumnos.filter(a => a.sede === "GSM").length },
-            { label: "Rutinas Totales", val: rutinas.length },
+            { label: "Rutinas Totales", val: new Set(rutinas.map(r => r.nombre || r.id)).size },
           ].map(s => (
             <div key={s.label} className="stat-card">
               <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 38, color: s.accent ? "#00b4d8" : "white", lineHeight: 1, marginBottom: 4 }}>{s.val}</p>
