@@ -174,7 +174,7 @@ export default function AlumnosAdmin() {
   const lbl = { fontFamily: "'DM Sans',sans-serif", fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "rgba(255,255,255,0.35)", marginBottom: 7, display: "block" };
 
   return (
-    <div style={{ fontFamily: "'Bebas Neue',sans-serif", minHeight: "100vh", background: "#0a0a0a", color: "white" }}>
+    <div style={{ fontFamily: "'Bebas Neue',sans-serif", minHeight: "100vh", background: "#0a0a0a", color: "white", display: "flex", flexDirection: "column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         *{margin:0;padding:0;box-sizing:border-box}
@@ -187,15 +187,22 @@ export default function AlumnosAdmin() {
         .filtros-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
         .tabla-wrap{overflow-x:auto;border:1px solid rgba(255,255,255,0.07);border-radius:14px}
         .modal-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+        .footer { background: #000; border-top: 1px solid rgba(255,255,255,0.06); padding: 40px 60px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        .footer-brand { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; color: #00b4d8; margin-bottom: 4px; }
+        .footer-copy { font-family: 'DM Sans', sans-serif; font-size: 12px; color: rgba(255,255,255,0.3); }
+        .footer-socials { display: flex; gap: 14px; }
+        .social-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; color: rgba(255,255,255,0.5); font-size: 15px; transition: border-color 0.2s, color 0.2s; }
+        .social-btn:hover { border-color: #00b4d8; color: #00b4d8; }
         @media(max-width:500px){
           .modal-form-grid{grid-template-columns:1fr!important}
           .filtros-row .busq{flex:unset!important;width:100%}
+          .footer { padding: 32px 24px; }
         }
       `}</style>
 
       <AdminNavBar />
 
-      <div style={{ padding: "80px 20px 60px", maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ padding: "80px 20px 60px", maxWidth: 1200, margin: "0 auto", flex: 1, width: "100%" }}>
 
         {/* STATS */}
         <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, letterSpacing: 4, textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 8, marginTop: 12 }}>resumen</p>
@@ -346,6 +353,19 @@ export default function AlumnosAdmin() {
       )}
 
       {perfilModal && <PerfilModal alumno={perfilModal} profesores={profesores} onClose={() => setPerfilModal(null)} onGuardar={guardarEdicion} onEliminar={eliminarAlumno} />}
+
+      {/* ── FOOTER ── */}
+      <footer className="footer">
+        <div>
+          <p className="footer-brand">AnimaApp</p>
+          <p className="footer-copy">© {new Date().getFullYear()} Gimnasio Anima · Derechos reservados por el autor</p>
+        </div>
+        <div className="footer-socials">
+          <a href="#" className="social-btn" title="Facebook">f</a>
+          <a href="#" className="social-btn" title="Instagram">📷</a>
+          <a href="#" className="social-btn" title="WhatsApp">💬</a>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -222,25 +222,30 @@ export default function AdminDashboard() {
 
   const agregarProfesor = async () => {
     if (!form.nombre || !form.email || !form.pass) return alert("Completá nombre, email y contraseña");
+    if (!/^\S+@\S+\.\S+$/.test(form.email)) return alert("Por favor ingresá un correo electrónico válido (ej: nombre@gmail.com)");
     if (form.sedes.length === 0) return alert("Seleccioná al menos una sede");
     setSubiendoFoto(true);
     try {
       const cred = await createUserWithEmailAndPassword(authSecundaria, form.email, form.pass);
-      let fotoUrl = "";
-      if (form.foto) {
-        const sr = ref(storage, `fotos/profesores/${cred.user.uid}`);
-        await uploadBytes(sr, form.foto);
-        fotoUrl = await getDownloadURL(sr);
-      }
       await addDoc(collection(db, "usuarios"), {
         uid: cred.user.uid, nombre: form.nombre, apellido: form.apellido,
         email: form.email, rol: "profesor", sedes: form.sedes,
         dni: form.dni, nacimiento: form.nacimiento, edad: form.edad,
-        fechaAlta: new Date().toLocaleDateString("es-AR"), foto: fotoUrl
+        fechaAlta: new Date().toLocaleDateString("es-AR"), foto: ""
       });
-      setForm({ nombre: "", apellido: "", email: "", pass: "", sedes: [], dni: "", nacimiento: "", edad: "", foto: null, fotoPreview: null });
+      setForm({ nombre: "", apellido: "", email: "", pass: "", sedes: [], dni: "", nacimiento: "", edad: "" });
       cargarDatos();
-    } catch (e) { alert("Error: " + e.message); }
+      alert("Profesor agregado exitosamente.");
+    } catch (e) {
+      console.error("Error al crear profesor:", e);
+      if (e.code === "auth/email-already-in-use") {
+        alert("Ese correo electrónico ya está registrado. Por favor, usá otro.");
+      } else if (e.code === "auth/weak-password") {
+        alert("La contraseña es muy débil. Debe tener al menos 6 caracteres.");
+      } else {
+        alert("Error al agregar profesor. Revisá los datos e intentá de nuevo. (" + e.code + ")");
+      }
+    }
     setSubiendoFoto(false);
   };
 
@@ -280,7 +285,7 @@ export default function AdminDashboard() {
   const lbl = { fontFamily: "'DM Sans',sans-serif", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 7, display: "block" };
 
   return (
-    <div style={{ fontFamily: "'Bebas Neue',sans-serif", minHeight: "100vh", background: "#0a0a0a", color: "white" }}>
+    <div style={{ fontFamily: "'Bebas Neue',sans-serif", minHeight: "100vh", background: "#0a0a0a", color: "white", display: "flex", flexDirection: "column" }}>
       <style>{`
         *{margin:0;padding:0;box-sizing:border-box}
         input::placeholder{color:rgba(255,255,255,0.2)}
@@ -292,10 +297,17 @@ export default function AdminDashboard() {
         .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
         .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
         .prof-stats{display:flex;gap:20px;margin-right:12px}
+        .footer { background: #000; border-top: 1px solid rgba(255,255,255,0.06); padding: 40px 60px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        .footer-brand { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; color: #00b4d8; margin-bottom: 4px; }
+        .footer-copy { font-family: 'DM Sans', sans-serif; font-size: 12px; color: rgba(255,255,255,0.3); }
+        .footer-socials { display: flex; gap: 14px; }
+        .social-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; color: rgba(255,255,255,0.5); font-size: 15px; transition: border-color 0.2s, color 0.2s; }
+        .social-btn:hover { border-color: #00b4d8; color: #00b4d8; }
         @media(max-width:680px){
           .stat-grid{grid-template-columns:1fr 1fr!important}
           .form-grid{grid-template-columns:1fr!important}
           .prof-stats{display:none!important}
+          .footer { padding: 32px 24px; }
         }
       `}</style>
 
@@ -305,7 +317,7 @@ export default function AdminDashboard() {
         onMarcarTodas={marcarTodasLeidas}
       />
 
-      <div style={{ padding: "80px 20px 60px", maxWidth: 1100, margin: "0 auto" }}>
+      <div style={{ padding: "80px 20px 60px", maxWidth: 1100, margin: "0 auto", flex: 1, width: "100%" }}>
 
         {/* ── PANEL ── */}
         {vista === "panel" && (
@@ -370,14 +382,6 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-              <div style={{ marginBottom: 18 }}>
-                <label style={lbl}>Foto del profesor</label>
-                <label className="foto-upload" style={{ display: "block" }}>
-                  {form.fotoPreview ? <img src={form.fotoPreview} alt="" style={{ width: 72, height: 72, borderRadius: 10, objectFit: "cover", margin: "0 auto", display: "block" }} />
-                    : <><p style={{ fontSize: 26, marginBottom: 4 }}>📷</p><p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.3)" }}>Click para subir foto</p></>}
-                  <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files[0]; if (f) setForm(p => ({ ...p, foto: f, fotoPreview: URL.createObjectURL(f) })); }} />
-                </label>
-              </div>
               <button onClick={agregarProfesor} disabled={subiendoFoto} style={{ background: "#00b4d8", color: "#03045e", border: "none", borderRadius: 10, padding: "12px 28px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 700, cursor: subiendoFoto ? "not-allowed" : "pointer", opacity: subiendoFoto ? 0.6 : 1 }}>
                 {subiendoFoto ? "Subiendo..." : "+ Agregar profesor"}
               </button>
@@ -435,6 +439,19 @@ export default function AdminDashboard() {
       </div>
 
       {perfilModal && <PerfilProfesorModal profesor={perfilModal} alumnos={alumnos} comentarios={comentarios} onClose={() => setPerfilModal(null)} onGuardar={guardarEdicionModal} onEliminar={eliminarProfesor} />}
+
+      {/* ── FOOTER ── */}
+      <footer className="footer">
+        <div>
+          <p className="footer-brand">AnimaApp</p>
+          <p className="footer-copy">© {new Date().getFullYear()} Gimnasio Anima · Derechos reservados por el autor</p>
+        </div>
+        <div className="footer-socials">
+          <a href="#" className="social-btn" title="Facebook">f</a>
+          <a href="#" className="social-btn" title="Instagram">📷</a>
+          <a href="#" className="social-btn" title="WhatsApp">💬</a>
+        </div>
+      </footer>
     </div>
   );
 }
