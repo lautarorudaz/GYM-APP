@@ -8,6 +8,7 @@ import AlumnoDashboard from "./pages/alumno/AlumnoDashboard";
 import PerfilAlumno from "./pages/alumno/PerfilAlumno";
 import RutinaAlumno from "./pages/alumno/RutinaAlumno";
 import AlumnosAdmin from "./pages/admin/AlumnosAdmin";
+import EjerciciosAdmin from "./pages/admin/EjerciciosAdmin";
 
 
 
@@ -23,6 +24,7 @@ function App() {
 <Route path="/alumno/perfil" element={<ProtectedRoute rol="alumno"><PerfilAlumno /></ProtectedRoute>} />
 <Route path="/alumno/rutina" element={<ProtectedRoute rol="alumno"><RutinaAlumno /></ProtectedRoute>} />
 <Route path="/admin/alumnos" element={<ProtectedRoute rol="admin"><AlumnosAdmin /></ProtectedRoute>} />
+<Route path="/admin/ejercicios" element={<ProtectedRoute rol="admin"><EjerciciosAdmin /></ProtectedRoute>} />
 
         </Routes>
       </AuthProvider>

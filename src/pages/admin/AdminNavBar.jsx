@@ -34,6 +34,8 @@ export default function AdminNavBar({ notificaciones = [], onMarcarLeida, onMarc
     const enAlumnos = location.pathname === "/admin/alumnos";
     const enPanel = location.pathname === "/admin" && vistaActual === "panel";
     const enProf = location.pathname === "/admin" && vistaActual === "profesores";
+    const enEjercicios = location.pathname === "/admin/ejercicios";
+    const enRutinas = location.pathname === "/admin/rutinas";
 
     // En vez de navigate(), llama el callback del padre para cambiar vista
     const irAPanel = () => {
@@ -47,6 +49,8 @@ export default function AdminNavBar({ notificaciones = [], onMarcarLeida, onMarc
         setMenuOpen(false);
     };
     const irAAlumnos = () => { navigate("/admin/alumnos"); setMenuOpen(false); };
+    const irAEjercicios = () => { navigate("/admin/ejercicios"); setMenuOpen(false); };
+    const irARutinas = () => { navigate("/admin/rutinas"); setMenuOpen(false); };
 
     const handleCambiarSede = () => {
         sessionStorage.removeItem("adminSede");
@@ -59,6 +63,8 @@ export default function AdminNavBar({ notificaciones = [], onMarcarLeida, onMarc
         { label: "Panel", action: irAPanel, active: enPanel },
         { label: "Profesores", action: irAProfesores, active: enProf },
         { label: "Alumnos", action: irAAlumnos, active: enAlumnos },
+        { label: "Ejercicios", action: irAEjercicios, active: enEjercicios },
+        { label: "Rutinas", action: irARutinas, active: enRutinas },
     ];
 
     return (
