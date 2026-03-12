@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, query, where } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { db, authSecundaria, storage } from "../../firebase";
-import { useNavigate, useLocation } from "react-router-dom";
+import { db, authSecundaria } from "../../firebase";
+import { useNavigate } from "react-router-dom";
 import { crearNotificacion } from "../../utils/notificaciones";
 import { useAuth } from "../../context/AuthContext";
 import AdminNavBar from "./AdminNavBar";
@@ -14,13 +13,51 @@ const calcularEdad = (f) => {
   return isNaN(e) ? "" : String(e);
 };
 
+const SEDES = [
+  { key: "general", label: "General", emoji: "🌐", desc: "Ver todo el gimnasio" },
+  { key: "Edison", label: "Edison", emoji: "🏋️", desc: "Sede Edison" },
+  { key: "Moreno", label: "Moreno", emoji: "🏋️", desc: "Sede Moreno" },
+  { key: "GSM", label: "Gral. San Martín", emoji: "🏋️", desc: "Sede GSM" },
+];
+
+// ── Pantalla selector de sede ────────────────────────────────
+function SelectorSede({ onSeleccionar }) {
+  return (
+    <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
+        *{margin:0;padding:0;box-sizing:border-box}
+        .sede-card{background:#111;border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:32px 28px;cursor:pointer;transition:all 0.2s;text-align:center}
+        .sede-card:hover{border-color:rgba(0,180,216,0.5);background:#161616;transform:translateY(-3px)}
+        .sede-card.general{border-color:rgba(0,180,216,0.2);background:rgba(0,180,216,0.03)}
+        .sede-card.general:hover{border-color:#00b4d8;background:rgba(0,180,216,0.07)}
+      `}</style>
+      <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, letterSpacing: 4, textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 12 }}>Panel Admin</p>
+      <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 52, letterSpacing: 3, color: "white", marginBottom: 10, textAlign: "center" }}>
+        <span style={{ color: "#00b4d8" }}>Anima</span>App
+      </h1>
+      <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.35)", marginBottom: 48, textAlign: "center" }}>
+        Seleccioná la sede con la que vas a trabajar hoy
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, width: "100%", maxWidth: 820 }}>
+        {SEDES.map(s => (
+          <div key={s.key} className={`sede-card ${s.key === "general" ? "general" : ""}`} onClick={() => onSeleccionar(s.key)}>
+            <div style={{ fontSize: 38, marginBottom: 16 }}>{s.emoji}</div>
+            <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, letterSpacing: 2, color: s.key === "general" ? "#00b4d8" : "white", marginBottom: 6 }}>{s.label}</p>
+            <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.3)" }}>{s.desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Modal perfil profesor ────────────────────────────────────
 function PerfilProfesorModal({ profesor, alumnos, comentarios, onClose, onGuardar, onEliminar }) {
   const [tab, setTab] = useState("datos");
   const [editando, setEditando] = useState(false);
   const [datos, setDatos] = useState({ ...profesor });
   const [guardando, setGuardando] = useState(false);
-  const [editFoto, setEditFoto] = useState(null);
 
   const alumnosDelProfe = alumnos.filter(a => a.profesorId === profesor.id);
   const comsDelProfe = comentarios.filter(c => c.profesorId === profesor.id);
@@ -31,13 +68,10 @@ function PerfilProfesorModal({ profesor, alumnos, comentarios, onClose, onGuarda
     if (k === "nacimiento") setDatos(d => ({ ...d, nacimiento: v, edad: calcularEdad(v) }));
     else setDatos(d => ({ ...d, [k]: v }));
   };
-
   const guardar = async () => {
     setGuardando(true);
-    try {
-      await onGuardar({ ...datos });
-      setEditando(false);
-    } catch (e) { alert("Error: " + e.message); }
+    try { await onGuardar({ ...datos }); setEditando(false); }
+    catch (e) { alert("Error: " + e.message); }
     setGuardando(false);
   };
 
@@ -52,7 +86,7 @@ function PerfilProfesorModal({ profesor, alumnos, comentarios, onClose, onGuarda
         <div style={{ padding: "22px 24px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ width: 54, height: 54, borderRadius: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>
-              👤
+              {profesor.foto ? <img src={profesor.foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👤"}
             </div>
             <div>
               <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, letterSpacing: 1, color: "white", lineHeight: 1 }}>{datos.nombre} {datos.apellido || ""}</p>
@@ -77,7 +111,8 @@ function PerfilProfesorModal({ profesor, alumnos, comentarios, onClose, onGuarda
                 {[["Nombre", "nombre"], ["Apellido", "apellido"], ["DNI", "dni"], ["Nacimiento", "nacimiento", "date"], ["Edad", "edad", null, true], ["Fecha de alta", "fechaAlta"]].map(([label, key, tipo, readOnly]) => (
                   <div key={key} style={{ marginBottom: 16 }}>
                     <label style={ls}>{label}</label>
-                    {editando ? (readOnly ? <input style={rs} value={datos[key] ? `${datos[key]} años` : "—"} readOnly /> : <input type={tipo || "text"} value={datos[key] || ""} onChange={e => setDato(key, e.target.value)} style={is} />)
+                    {editando
+                      ? (readOnly ? <input style={rs} value={datos[key] ? `${datos[key]} años` : "—"} readOnly /> : <input type={tipo || "text"} value={datos[key] || ""} onChange={e => setDato(key, e.target.value)} style={is} />)
                       : <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: datos[key] ? "white" : "rgba(255,255,255,0.2)", fontStyle: datos[key] ? "normal" : "italic" }}>{datos[key] || "Sin cargar"}</p>}
                   </div>
                 ))}
@@ -98,7 +133,7 @@ function PerfilProfesorModal({ profesor, alumnos, comentarios, onClose, onGuarda
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {editando ? (
                   <><button onClick={guardar} disabled={guardando} style={{ flex: 1, background: "#00b4d8", color: "#03045e", border: "none", borderRadius: 10, padding: "12px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: guardando ? 0.6 : 1 }}>{guardando ? "Guardando..." : "Guardar"}</button>
-                    <button onClick={() => { setEditando(false); setDatos({ ...profesor }); setEditFoto(null); }} style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.6)", borderRadius: 10, padding: "12px 18px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, cursor: "pointer" }}>Cancelar</button></>
+                    <button onClick={() => { setEditando(false); setDatos({ ...profesor }); }} style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.6)", borderRadius: 10, padding: "12px 18px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, cursor: "pointer" }}>Cancelar</button></>
                 ) : (
                   <><button onClick={() => setEditando(true)} style={{ flex: 1, background: "#00b4d8", color: "#03045e", border: "none", borderRadius: 10, padding: "12px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>✏️ Editar</button>
                     <button onClick={() => onEliminar(profesor.id)} style={{ background: "none", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", borderRadius: 10, padding: "12px 18px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, cursor: "pointer" }}>Eliminar</button></>
@@ -153,51 +188,47 @@ function PerfilProfesorModal({ profesor, alumnos, comentarios, onClose, onGuarda
   );
 }
 
+// ── helpers sessionStorage ───────────────────────────────────
+const getSede = () => sessionStorage.getItem("adminSede") || null;
+const getVista = () => sessionStorage.getItem("adminVista") || "panel";
+const setSede = (v) => sessionStorage.setItem("adminSede", v);
+const setVista = (v) => sessionStorage.setItem("adminVista", v);
+
 // ── Dashboard principal ──────────────────────────────────────
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // Leer vista inicial desde location.state (para navegación desde AlumnosAdmin)
-  const [vista, setVista] = useState(location.state?.vista || "panel");
-
   const { usuario } = useAuth();
+
+  // ── CLAVE: sede y vista se leen de sessionStorage en cada render.
+  // Usamos un contador como "trigger" para forzar re-render cuando cambian.
+  const [tick, setTick] = useState(0);
+  const rerender = () => setTick(t => t + 1);
+
+  const sedeActiva = getSede();
+  const vista = getVista();
+  const esFiltrado = sedeActiva && sedeActiva !== "general";
+  const sedeLabelActiva = SEDES.find(s => s.key === sedeActiva)?.label || sedeActiva;
+
   const [profesores, setProfesores] = useState([]);
   const [alumnos, setAlumnos] = useState([]);
-  const [rutinas, setRutinas] = useState([]);
   const [comentarios, setComentarios] = useState([]);
   const [notificaciones, setNotificaciones] = useState([]);
   const [filtroBusq, setFiltroBusq] = useState("");
   const [filtroSede, setFiltroSede] = useState("");
   const [perfilModal, setPerfilModal] = useState(null);
-
-  const [form, setForm] = useState({ nombre: "", apellido: "", email: "", pass: "", sedes: [], dni: "", nacimiento: "", edad: "", foto: null, fotoPreview: null });
+  const [form, setForm] = useState({ nombre: "", apellido: "", email: "", pass: "", sedes: [], dni: "", nacimiento: "", edad: "" });
   const [subiendoFoto, setSubiendoFoto] = useState(false);
 
-  // Actualizar vista si cambia location.state (link desde otro componente)
-  useEffect(() => {
-    if (location.state?.vista) setVista(location.state.vista);
-  }, [location.state]);
-
-  useEffect(() => { cargarDatos(); }, []);
+  useEffect(() => { cargarDatos(); cargarNotificaciones(); }, []);
 
   const cargarDatos = async () => {
     const snap = await getDocs(collection(db, "usuarios"));
     const todos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
     setProfesores(todos.filter(u => u.rol === "profesor"));
     setAlumnos(todos.filter(u => u.rol === "alumno"));
-
-    const rutSnap = await getDocs(collection(db, "rutinas"));
-    const rutsData = rutSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    setRutinas(rutsData);
-
     const comSnap = await getDocs(collection(db, "comentarios"));
-    const comsData = comSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    setComentarios(comsData);
+    setComentarios(comSnap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
-
-
 
   const cargarNotificaciones = async () => {
     const adminSnap = await getDocs(query(collection(db, "usuarios"), where("rol", "==", "admin")));
@@ -209,8 +240,9 @@ export default function AdminDashboard() {
     setNotificaciones(notifs);
   };
 
-
-  useEffect(() => { cargarNotificaciones(); }, []);
+  const elegirSede = (s) => { setSede(s); rerender(); };
+  const cambiarVista = (v) => { setVista(v); rerender(); };
+  const handleCambiarSede = () => { sessionStorage.removeItem("adminSede"); sessionStorage.removeItem("adminVista"); rerender(); };
 
   const setFormField = (key, val) => {
     if (key === "nacimiento") setForm(f => ({ ...f, nacimiento: val, edad: calcularEdad(val) }));
@@ -219,7 +251,7 @@ export default function AdminDashboard() {
 
   const agregarProfesor = async () => {
     if (!form.nombre || !form.email || !form.pass) return alert("Completá nombre, email y contraseña");
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) return alert("Por favor ingresá un correo electrónico válido (ej: nombre@gmail.com)");
+    if (!/^\S+@\S+\.\S+$/.test(form.email)) return alert("Ingresá un correo válido (ej: nombre@gmail.com)");
     if (form.sedes.length === 0) return alert("Seleccioná al menos una sede");
     setSubiendoFoto(true);
     try {
@@ -234,14 +266,9 @@ export default function AdminDashboard() {
       cargarDatos();
       alert("Profesor agregado exitosamente.");
     } catch (e) {
-      console.error("Error al crear profesor:", e);
-      if (e.code === "auth/email-already-in-use") {
-        alert("Ese correo electrónico ya está registrado. Por favor, usá otro.");
-      } else if (e.code === "auth/weak-password") {
-        alert("La contraseña es muy débil. Debe tener al menos 6 caracteres.");
-      } else {
-        alert("Error al agregar profesor. Revisá los datos e intentá de nuevo. (" + e.code + ")");
-      }
+      if (e.code === "auth/email-already-in-use") alert("Ese correo ya está registrado.");
+      else if (e.code === "auth/weak-password") alert("Contraseña muy débil (mínimo 6 caracteres).");
+      else alert("Error al agregar profesor. (" + e.code + ")");
     }
     setSubiendoFoto(false);
   };
@@ -271,7 +298,11 @@ export default function AdminDashboard() {
     cargarNotificaciones();
   };
 
-  const profesoresFiltrados = profesores.filter(p => {
+  // Filtrado por sede
+  const profesoresDeSede = esFiltrado ? profesores.filter(p => p.sedes?.includes(sedeActiva)) : profesores;
+  const alumnosDeSede = esFiltrado ? alumnos.filter(a => a.sede === sedeActiva) : alumnos;
+
+  const profesoresFiltrados = profesoresDeSede.filter(p => {
     const nombre = `${p.nombre || ""} ${p.apellido || ""}`.toLowerCase();
     const matchBusq = !filtroBusq || nombre.includes(filtroBusq.toLowerCase()) || (p.dni || "").includes(filtroBusq);
     const matchSede = !filtroSede || p.sedes?.includes(filtroSede);
@@ -281,37 +312,37 @@ export default function AdminDashboard() {
   const inp = { width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "11px 14px", color: "white", fontFamily: "'DM Sans',sans-serif", fontSize: 14, outline: "none" };
   const lbl = { fontFamily: "'DM Sans',sans-serif", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 7, display: "block" };
 
+  // Mostrar selector si no eligió sede
+  if (!sedeActiva) return <SelectorSede onSeleccionar={elegirSede} />;
+
   return (
     <div style={{ fontFamily: "'Bebas Neue',sans-serif", minHeight: "100vh", background: "#0a0a0a", color: "white", display: "flex", flexDirection: "column" }}>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         *{margin:0;padding:0;box-sizing:border-box}
         input::placeholder{color:rgba(255,255,255,0.2)}
         select option{background:#1a1a1a;color:white}
         input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:0.4}
-        .foto-upload{border:2px dashed rgba(255,255,255,0.1);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:border-color 0.2s;background:rgba(255,255,255,0.02)}
-        .foto-upload:hover{border-color:rgba(0,180,216,0.4)}
+        input[type="checkbox"]{accent-color:#00b4d8}
         .prof-row:hover{background:rgba(255,255,255,0.025)!important}
         .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
         .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
         .prof-stats{display:flex;gap:20px;margin-right:12px}
-        .footer { background: #000; border-top: 1px solid rgba(255,255,255,0.06); padding: 40px 60px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
-        .footer-brand { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; color: #00b4d8; margin-bottom: 4px; }
-        .footer-copy { font-family: 'DM Sans', sans-serif; font-size: 12px; color: rgba(255,255,255,0.3); }
-        .footer-socials { display: flex; gap: 14px; }
-        .social-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; color: rgba(255,255,255,0.5); font-size: 15px; transition: border-color 0.2s, color 0.2s; }
-        .social-btn:hover { border-color: #00b4d8; color: #00b4d8; }
-        @media(max-width:680px){
-          .stat-grid{grid-template-columns:1fr 1fr!important}
-          .form-grid{grid-template-columns:1fr!important}
-          .prof-stats{display:none!important}
-          .footer { padding: 32px 24px; }
-        }
+        .footer{background:#000;border-top:1px solid rgba(255,255,255,0.06);padding:40px 60px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px}
+        .footer-brand{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;color:#00b4d8;margin-bottom:4px}
+        .footer-copy{font-family:'DM Sans',sans-serif;font-size:12px;color:rgba(255,255,255,0.3)}
+        .footer-socials{display:flex;gap:14px}
+        .social-btn{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;color:rgba(255,255,255,0.5);font-size:15px;transition:border-color 0.2s,color 0.2s}
+        .social-btn:hover{border-color:#00b4d8;color:#00b4d8}
+        @media(max-width:680px){.stat-grid{grid-template-columns:1fr 1fr!important}.form-grid{grid-template-columns:1fr!important}.prof-stats{display:none!important}.footer{padding:32px 24px}}
       `}</style>
 
-      <AdminNavBar vistaActual={vista}
+      <AdminNavBar
         notificaciones={notificaciones}
         onMarcarLeida={marcarLeida}
         onMarcarTodas={marcarTodasLeidas}
+        onCambiarVista={cambiarVista}
+        onCambiarSede={handleCambiarSede}
       />
 
       <div style={{ padding: "80px 20px 60px", maxWidth: 1100, margin: "0 auto", flex: 1, width: "100%" }}>
@@ -320,12 +351,15 @@ export default function AdminDashboard() {
         {vista === "panel" && (
           <>
             <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, letterSpacing: 4, textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 8, marginTop: 12 }}>resumen</p>
-            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 48, letterSpacing: 2, marginBottom: 28 }}>Panel Admin</h1>
+            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 48, letterSpacing: 2, marginBottom: 6 }}>Panel Admin</h1>
+            <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: esFiltrado ? "#00b4d8" : "rgba(255,255,255,0.3)", marginBottom: 28 }}>
+              {esFiltrado ? `📍 Mostrando datos de la sede ${sedeLabelActiva}` : "Vista general — todas las sedes"}
+            </p>
             <div className="stat-grid" style={{ marginBottom: 32 }}>
               {[
-                { label: "Profesores activos", val: profesores.length },
-                { label: "Alumnos activos", val: alumnos.length, accent: true, link: "/admin/alumnos" },
-                { label: "Rutinas totales", val: new Set(rutinas.map(r => r.nombre || r.id)).size },
+                { label: "Profesores activos", val: profesoresDeSede.length },
+                { label: "Alumnos activos", val: alumnosDeSede.length, accent: true, link: "/admin/alumnos" },
+                { label: "Alumnos con rutina", val: alumnosDeSede.filter(a => a.rutinaId).length },
               ].map(s => (
                 <div key={s.label} style={{ background: "#111", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "20px 24px", cursor: s.link ? "pointer" : "default" }} onClick={() => s.link && navigate(s.link)}>
                   <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 44, color: s.accent ? "#00b4d8" : "white", lineHeight: 1, marginBottom: 4 }}>{s.val}</p>
@@ -333,11 +367,13 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
-            <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 14 }}>Profesores</p>
-            {profesores.map(p => (
+            <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 14 }}>
+              Profesores{esFiltrado ? ` — ${sedeLabelActiva}` : ""}
+            </p>
+            {profesoresDeSede.map(p => (
               <div key={p.id} style={{ background: "#111", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 18px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }} onClick={() => setPerfilModal(p)}>
                 <div style={{ width: 38, height: 38, borderRadius: 10, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ fontSize: 17 }}>👤</span>
+                  {p.foto ? <img src={p.foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 17 }}>👤</span>}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 500, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre} {p.apellido || ""}</p>
@@ -356,16 +392,19 @@ export default function AdminDashboard() {
         {vista === "profesores" && (
           <>
             <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, letterSpacing: 4, textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 8, marginTop: 12 }}>gestión</p>
-            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 48, letterSpacing: 2, marginBottom: 28 }}>Profesores</h1>
+            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 48, letterSpacing: 2, marginBottom: 6 }}>Profesores</h1>
+            <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: esFiltrado ? "#00b4d8" : "rgba(255,255,255,0.3)", marginBottom: 28 }}>
+              {esFiltrado ? `📍 Sede ${sedeLabelActiva}` : "Vista general"}
+            </p>
 
             {/* FORM */}
             <div style={{ background: "#111", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "22px 20px", marginBottom: 24 }}>
               <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 18 }}>Nuevo profesor</p>
               <div className="form-grid" style={{ marginBottom: 14 }}>
                 {[["Nombre *", "nombre"], ["Apellido", "apellido"], ["DNI", "dni"], ["Email *", "email", "email"], ["Contraseña *", "pass", "text"]].map(([l, k, t]) => (
-                  <div key={k}><label style={lbl}>{l}</label><input type={t || "text"} value={form[k]} onChange={e => setFormField(k, e.target.value)} placeholder={l.replace(" *", "")} style={inp} /></div>
+                  <div key={k}><label style={lbl}>{l}</label><input type={t || "text"} value={form[k] || ""} onChange={e => setFormField(k, e.target.value)} placeholder={l.replace(" *", "")} style={inp} /></div>
                 ))}
-                <div><label style={lbl}>Fecha de Nacimiento</label><input type="date" value={form.nacimiento} onChange={e => setFormField("nacimiento", e.target.value)} style={inp} /></div>
+                <div><label style={lbl}>Fecha de Nacimiento</label><input type="date" value={form.nacimiento || ""} onChange={e => setFormField("nacimiento", e.target.value)} style={inp} /></div>
                 <div><label style={lbl}>Edad (calculada)</label><input style={{ ...inp, opacity: 0.6 }} value={form.edad ? `${form.edad} años` : "—"} readOnly /></div>
                 <div>
                   <label style={lbl}>Sedes *</label>
@@ -380,18 +419,20 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <button onClick={agregarProfesor} disabled={subiendoFoto} style={{ background: "#00b4d8", color: "#03045e", border: "none", borderRadius: 10, padding: "12px 28px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 700, cursor: subiendoFoto ? "not-allowed" : "pointer", opacity: subiendoFoto ? 0.6 : 1 }}>
-                {subiendoFoto ? "Subiendo..." : "+ Agregar profesor"}
+                {subiendoFoto ? "Guardando..." : "+ Agregar profesor"}
               </button>
             </div>
 
             {/* FILTROS */}
             <div style={{ display: "flex", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
               <div style={{ flex: 2, minWidth: 160 }}><label style={lbl}>Buscar</label><input style={inp} placeholder="Nombre, apellido o DNI..." value={filtroBusq} onChange={e => setFiltroBusq(e.target.value)} /></div>
-              <div style={{ flex: 1, minWidth: 130 }}><label style={lbl}>Sede</label>
-                <select style={inp} value={filtroSede} onChange={e => setFiltroSede(e.target.value)}>
-                  <option value="">Todas</option><option value="Edison">Edison</option><option value="Moreno">Moreno</option><option value="GSM">General San Martín</option>
-                </select>
-              </div>
+              {!esFiltrado && (
+                <div style={{ flex: 1, minWidth: 130 }}><label style={lbl}>Sede</label>
+                  <select style={inp} value={filtroSede} onChange={e => setFiltroSede(e.target.value)}>
+                    <option value="">Todas</option><option value="Edison">Edison</option><option value="Moreno">Moreno</option><option value="GSM">General San Martín</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* LISTA */}
@@ -406,7 +447,7 @@ export default function AdminDashboard() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, cursor: "pointer", minWidth: 0 }} onClick={() => setPerfilModal(p)}>
                       <div style={{ width: 48, height: 48, borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <span style={{ fontSize: 20 }}>👤</span>
+                        {p.foto ? <img src={p.foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 20 }}>👤</span>}
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 500, color: "white", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre} {p.apellido || ""}</p>
@@ -430,23 +471,22 @@ export default function AdminDashboard() {
                 </div>
               );
             })}
-            <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.2)", marginTop: 12 }}>Mostrando {profesoresFiltrados.length} de {profesores.length} profesores</p>
+            <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.2)", marginTop: 12 }}>Mostrando {profesoresFiltrados.length} de {profesoresDeSede.length} profesores</p>
           </>
         )}
       </div>
 
       {perfilModal && <PerfilProfesorModal profesor={perfilModal} alumnos={alumnos} comentarios={comentarios} onClose={() => setPerfilModal(null)} onGuardar={guardarEdicionModal} onEliminar={eliminarProfesor} />}
 
-      {/* ── FOOTER ── */}
       <footer className="footer">
         <div>
           <p className="footer-brand">AnimaApp</p>
           <p className="footer-copy">© {new Date().getFullYear()} Gimnasio Anima · Derechos reservados por el autor</p>
         </div>
         <div className="footer-socials">
-          <a href="#" className="social-btn" title="Facebook">f</a>
-          <a href="#" className="social-btn" title="Instagram">📷</a>
-          <a href="#" className="social-btn" title="WhatsApp">💬</a>
+          <a href="#" className="social-btn">f</a>
+          <a href="#" className="social-btn">📷</a>
+          <a href="#" className="social-btn">💬</a>
         </div>
       </footer>
     </div>

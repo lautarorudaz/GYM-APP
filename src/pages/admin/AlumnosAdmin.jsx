@@ -12,6 +12,12 @@ const calcularEdad = (fechaNac) => {
   return isNaN(edad) ? "" : String(edad);
 };
 
+const SEDES_LISTA = [
+  { key: "Edison", label: "Edison" },
+  { key: "Moreno", label: "Moreno" },
+  { key: "GSM", label: "Gral. San Martín" },
+];
+
 // ── Modal perfil alumno ──────────────────────────────────────
 function PerfilModal({ alumno, profesores, onClose, onGuardar, onEliminar }) {
   const [editando, setEditando] = useState(false);
@@ -23,7 +29,6 @@ function PerfilModal({ alumno, profesores, onClose, onGuardar, onEliminar }) {
     if (key === "nacimiento") setDatos(d => ({ ...d, nacimiento: val, edad: calcularEdad(val) }));
     else setDatos(d => ({ ...d, [key]: val }));
   };
-
   const guardar = async () => { setGuardando(true); await onGuardar(datos); setGuardando(false); setEditando(false); };
 
   const ls = { fontFamily: "'DM Sans',sans-serif", fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 6, display: "block" };
@@ -34,13 +39,15 @@ function PerfilModal({ alumno, profesores, onClose, onGuardar, onEliminar }) {
     <div style={{ marginBottom: 16 }}>
       <label style={ls}>{label}</label>
       {!editando
-        ? <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 15, color: datos[key] ? "white" : "rgba(255,255,255,0.2)", fontStyle: datos[key] ? "normal" : "italic" }}>{key === "profesorId" ? profNombre : (datos[key] || "Sin cargar")}</p>
+        ? <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 15, color: datos[key] ? "white" : "rgba(255,255,255,0.2)", fontStyle: datos[key] ? "normal" : "italic" }}>
+          {key === "profesorId" ? profNombre : (datos[key] || "Sin cargar")}
+        </p>
         : readOnly ? <input style={rs} value={datos[key] ? `${datos[key]} años` : "—"} readOnly />
-          : opciones ? (
-            <select value={datos[key] || ""} onChange={e => setDato(key, e.target.value)} style={{ ...is, cursor: "pointer" }}>
+          : opciones
+            ? <select value={datos[key] || ""} onChange={e => setDato(key, e.target.value)} style={{ ...is, cursor: "pointer" }}>
               {opciones.map(o => <option key={o.v} value={o.v} style={{ background: "#111" }}>{o.l}</option>)}
             </select>
-          ) : <input type={tipo} value={datos[key] || ""} onChange={e => setDato(key, e.target.value)} style={is} />
+            : <input type={tipo} value={datos[key] || ""} onChange={e => setDato(key, e.target.value)} style={is} />
       }
     </div>
   );
@@ -79,11 +86,17 @@ function PerfilModal({ alumno, profesores, onClose, onGuardar, onEliminar }) {
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
             {editando ? (
-              <><button onClick={guardar} disabled={guardando} style={{ flex: 1, background: "#00b4d8", color: "#03045e", border: "none", borderRadius: 10, padding: "12px 20px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: guardando ? 0.6 : 1 }}>{guardando ? "Guardando..." : "Guardar cambios"}</button>
-                <button onClick={() => { setEditando(false); setDatos({ ...alumno }); }} style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.6)", borderRadius: 10, padding: "12px 20px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, cursor: "pointer" }}>Cancelar</button></>
+              <>
+                <button onClick={guardar} disabled={guardando} style={{ flex: 1, background: "#00b4d8", color: "#03045e", border: "none", borderRadius: 10, padding: "12px 20px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: guardando ? 0.6 : 1 }}>
+                  {guardando ? "Guardando..." : "Guardar cambios"}
+                </button>
+                <button onClick={() => { setEditando(false); setDatos({ ...alumno }); }} style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.6)", borderRadius: 10, padding: "12px 20px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, cursor: "pointer" }}>Cancelar</button>
+              </>
             ) : (
-              <><button onClick={() => setEditando(true)} style={{ flex: 1, background: "#00b4d8", color: "#03045e", border: "none", borderRadius: 10, padding: "12px 20px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>✏️ Editar</button>
-                <button onClick={() => onEliminar(alumno.id)} style={{ background: "none", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", borderRadius: 10, padding: "12px 20px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, cursor: "pointer" }}>Eliminar</button></>
+              <>
+                <button onClick={() => setEditando(true)} style={{ flex: 1, background: "#00b4d8", color: "#03045e", border: "none", borderRadius: 10, padding: "12px 20px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>✏️ Editar</button>
+                <button onClick={() => onEliminar(alumno.id)} style={{ background: "none", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", borderRadius: 10, padding: "12px 20px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, cursor: "pointer" }}>Eliminar</button>
+              </>
             )}
           </div>
         </div>
@@ -95,16 +108,20 @@ function PerfilModal({ alumno, profesores, onClose, onGuardar, onEliminar }) {
 // ── Página principal ─────────────────────────────────────────
 export default function AlumnosAdmin() {
   const navigate = useNavigate();
+
+  // Leer sede directo de sessionStorage — sin useState
+  const sedeActiva = sessionStorage.getItem("adminSede") || "general";
+  const esFiltrado = sedeActiva !== "general";
+  const sedeLabelActiva = SEDES_LISTA.find(s => s.key === sedeActiva)?.label || sedeActiva;
+
   const [profesores, setProfesores] = useState([]);
   const [alumnos, setAlumnos] = useState([]);
-  const [rutinas, setRutinas] = useState([]);
   const [filtroBusq, setFiltroBusq] = useState("");
   const [filtroSede, setFiltroSede] = useState("");
   const [filtroProf, setFiltroProf] = useState("");
   const [perfilModal, setPerfilModal] = useState(null);
   const [modalNuevo, setModalNuevo] = useState(false);
-  const [form, setForm] = useState({ nombre: "", apellido: "", email: "", pass: "", sede: "", profesorId: "", dni: "", nacimiento: "", edad: "" });
-
+  const [form, setForm] = useState({ nombre: "", apellido: "", email: "", pass: "", sede: esFiltrado ? sedeActiva : "", profesorId: "", dni: "", nacimiento: "", edad: "" });
   const [creando, setCreando] = useState(false);
 
   useEffect(() => { cargarDatos(); }, []);
@@ -112,18 +129,18 @@ export default function AlumnosAdmin() {
   const cargarDatos = async () => {
     const snap = await getDocs(collection(db, "usuarios"));
     const todos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
     setProfesores(todos.filter(u => u.rol === "profesor"));
     setAlumnos(todos.filter(u => u.rol === "alumno"));
-
-    const rutSnap = await getDocs(collection(db, "rutinas"));
-    const rutsData = rutSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    setRutinas(rutsData);
   };
 
   const setFormField = (key, val) => {
     if (key === "nacimiento") setForm(f => ({ ...f, nacimiento: val, edad: calcularEdad(val) }));
     else setForm(f => ({ ...f, [key]: val }));
+  };
+
+  const abrirModalNuevo = () => {
+    setForm({ nombre: "", apellido: "", email: "", pass: "", sede: esFiltrado ? sedeActiva : "", profesorId: "", dni: "", nacimiento: "", edad: "" });
+    setModalNuevo(true);
   };
 
   const crearAlumno = async () => {
@@ -139,7 +156,6 @@ export default function AlumnosAdmin() {
         fechaAlta: new Date().toLocaleDateString("es-AR")
       });
       await crearNotificacion({ usuarioId: form.profesorId, mensaje: `Se te asignó un nuevo alumno: ${form.nombre} ${form.apellido} (${form.sede})`, tipo: "nuevo_alumno" });
-      setForm({ nombre: "", apellido: "", email: "", pass: "", sede: "", profesorId: "", dni: "", nacimiento: "", edad: "" });
       setModalNuevo(false); cargarDatos();
     } catch (e) { alert("Error: " + e.message); }
     setCreando(false);
@@ -164,7 +180,11 @@ export default function AlumnosAdmin() {
     setPerfilModal(null); cargarDatos();
   };
 
-  const alumnosFiltrados = alumnos.filter(a => {
+  // Filtrado por sede activa
+  const alumnosDeSede = esFiltrado ? alumnos.filter(a => a.sede === sedeActiva) : alumnos;
+  const profesoresDeSede = esFiltrado ? profesores.filter(p => p.sedes?.includes(sedeActiva)) : profesores;
+
+  const alumnosFiltrados = alumnosDeSede.filter(a => {
     const nombre = `${a.nombre || ""} ${a.apellido || ""}`.toLowerCase();
     const matchBusq = !filtroBusq || nombre.includes(filtroBusq.toLowerCase()) || (a.dni || "").includes(filtroBusq);
     const matchSede = !filtroSede || a.sede === filtroSede;
@@ -189,34 +209,42 @@ export default function AlumnosAdmin() {
         .filtros-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
         .tabla-wrap{overflow-x:auto;border:1px solid rgba(255,255,255,0.07);border-radius:14px}
         .modal-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-        .footer { background: #000; border-top: 1px solid rgba(255,255,255,0.06); padding: 40px 60px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
-        .footer-brand { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; color: #00b4d8; margin-bottom: 4px; }
-        .footer-copy { font-family: 'DM Sans', sans-serif; font-size: 12px; color: rgba(255,255,255,0.3); }
-        .footer-socials { display: flex; gap: 14px; }
-        .social-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; color: rgba(255,255,255,0.5); font-size: 15px; transition: border-color 0.2s, color 0.2s; }
-        .social-btn:hover { border-color: #00b4d8; color: #00b4d8; }
-        @media(max-width:500px){
-          .modal-form-grid{grid-template-columns:1fr!important}
-          .filtros-row .busq{flex:unset!important;width:100%}
-          .footer { padding: 32px 24px; }
-        }
+        .sede-locked{background:rgba(0,180,216,0.06);border:1px solid rgba(0,180,216,0.25);border-radius:10px;padding:11px 14px;font-family:'DM Sans',sans-serif;font-size:14px;color:#00b4d8}
+        .footer{background:#000;border-top:1px solid rgba(255,255,255,0.06);padding:40px 60px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px}
+        .footer-brand{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;color:#00b4d8;margin-bottom:4px}
+        .footer-copy{font-family:'DM Sans',sans-serif;font-size:12px;color:rgba(255,255,255,0.3)}
+        .footer-socials{display:flex;gap:14px}
+        .social-btn{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;color:rgba(255,255,255,0.5);font-size:15px;transition:border-color 0.2s,color 0.2s}
+        .social-btn:hover{border-color:#00b4d8;color:#00b4d8}
+        @media(max-width:500px){.modal-form-grid{grid-template-columns:1fr!important}.filtros-row .busq{flex:unset!important;width:100%}.footer{padding:32px 24px}}
       `}</style>
 
-      <AdminNavBar />
+      <AdminNavBar
+        onCambiarVista={() => { }}
+        onCambiarSede={() => { sessionStorage.removeItem("adminSede"); sessionStorage.removeItem("adminVista"); navigate("/admin"); }}
+      />
 
       <div style={{ padding: "80px 20px 60px", maxWidth: 1200, margin: "0 auto", flex: 1, width: "100%" }}>
 
         {/* STATS */}
         <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, letterSpacing: 4, textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 8, marginTop: 12 }}>resumen</p>
-        <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 48, letterSpacing: 2, color: "white", marginBottom: 20 }}>Alumnos</h1>
+        <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 48, letterSpacing: 2, color: "white", marginBottom: 6 }}>Alumnos</h1>
+        <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: esFiltrado ? "#00b4d8" : "rgba(255,255,255,0.3)", marginBottom: 24 }}>
+          {esFiltrado ? `📍 Sede ${sedeLabelActiva}` : "Vista general — todas las sedes"}
+        </p>
+
         <div className="stat-cards" style={{ marginBottom: 28 }}>
-          {[
+          {(esFiltrado ? [
+            { label: `Alumnos ${sedeLabelActiva}`, val: alumnosDeSede.length, accent: true },
+            { label: "Con rutina", val: alumnosDeSede.filter(a => a.rutinaId).length },
+            { label: "Sin rutina", val: alumnosDeSede.filter(a => !a.rutinaId).length },
+          ] : [
             { label: "Alumnos Generales", val: alumnos.length, accent: true },
             { label: "Edison", val: alumnos.filter(a => a.sede === "Edison").length },
             { label: "Moreno", val: alumnos.filter(a => a.sede === "Moreno").length },
             { label: "GSM", val: alumnos.filter(a => a.sede === "GSM").length },
-            { label: "Rutinas Totales", val: new Set(rutinas.map(r => r.nombre || r.id)).size },
-          ].map(s => (
+            { label: "Con rutina", val: alumnos.filter(a => a.rutinaId).length },
+          ]).map(s => (
             <div key={s.label} className="stat-card">
               <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 38, color: s.accent ? "#00b4d8" : "white", lineHeight: 1, marginBottom: 4 }}>{s.val}</p>
               <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: 1, textTransform: "uppercase" }}>{s.label}</p>
@@ -230,23 +258,26 @@ export default function AlumnosAdmin() {
             <label style={lbl}>Buscar por nombre, apellido o DNI</label>
             <input style={inp} placeholder="Ej: Juan Pérez o 12345678" value={filtroBusq} onChange={e => setFiltroBusq(e.target.value)} />
           </div>
-          <div style={{ flex: 1, minWidth: 130 }}>
-            <label style={lbl}>Sede</label>
-            <select style={inp} value={filtroSede} onChange={e => setFiltroSede(e.target.value)}>
-              <option value="">Todas</option>
-              <option value="Edison">Edison</option>
-              <option value="Moreno">Moreno</option>
-              <option value="GSM">General San Martín</option>
-            </select>
-          </div>
+          {/* Filtro de sede SOLO en vista general */}
+          {!esFiltrado && (
+            <div style={{ flex: 1, minWidth: 130 }}>
+              <label style={lbl}>Sede</label>
+              <select style={inp} value={filtroSede} onChange={e => setFiltroSede(e.target.value)}>
+                <option value="">Todas</option>
+                <option value="Edison">Edison</option>
+                <option value="Moreno">Moreno</option>
+                <option value="GSM">General San Martín</option>
+              </select>
+            </div>
+          )}
           <div style={{ flex: 1, minWidth: 140 }}>
             <label style={lbl}>Profesor</label>
             <select style={inp} value={filtroProf} onChange={e => setFiltroProf(e.target.value)}>
               <option value="">Todos</option>
-              {profesores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              {profesoresDeSede.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
             </select>
           </div>
-          <button onClick={() => setModalNuevo(true)}
+          <button onClick={abrirModalNuevo}
             style={{ background: "#00b4d8", color: "#03045e", border: "none", borderRadius: 10, padding: "11px 20px", fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", alignSelf: "flex-end" }}>
             + Nuevo alumno
           </button>
@@ -290,7 +321,9 @@ export default function AlumnosAdmin() {
             </tbody>
           </table>
         </div>
-        <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.2)", marginTop: 12 }}>Mostrando {alumnosFiltrados.length} de {alumnos.length} alumnos</p>
+        <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.2)", marginTop: 12 }}>
+          Mostrando {alumnosFiltrados.length} de {alumnosDeSede.length} alumnos{esFiltrado ? ` en ${sedeLabelActiva}` : ""}
+        </p>
       </div>
 
       {/* MODAL NUEVO ALUMNO */}
@@ -329,12 +362,17 @@ export default function AlumnosAdmin() {
               <div className="modal-form-grid">
                 <div>
                   <label style={lbl}>Sede *</label>
-                  <select style={inp} value={form.sede} onChange={e => setFormField("sede", e.target.value)}>
-                    <option value="">Seleccionar</option>
-                    <option value="Edison">Edison</option>
-                    <option value="Moreno">Moreno</option>
-                    <option value="GSM">General San Martín</option>
-                  </select>
+                  {esFiltrado ? (
+                    /* Sede bloqueada — ya está determinada por el filtro activo */
+                    <div className="sede-locked">📍 {sedeLabelActiva}</div>
+                  ) : (
+                    <select style={inp} value={form.sede} onChange={e => setFormField("sede", e.target.value)}>
+                      <option value="">Seleccionar</option>
+                      <option value="Edison">Edison</option>
+                      <option value="Moreno">Moreno</option>
+                      <option value="GSM">General San Martín</option>
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label style={lbl}>Profesor *</label>
@@ -356,16 +394,15 @@ export default function AlumnosAdmin() {
 
       {perfilModal && <PerfilModal alumno={perfilModal} profesores={profesores} onClose={() => setPerfilModal(null)} onGuardar={guardarEdicion} onEliminar={eliminarAlumno} />}
 
-      {/* ── FOOTER ── */}
       <footer className="footer">
         <div>
           <p className="footer-brand">AnimaApp</p>
           <p className="footer-copy">© {new Date().getFullYear()} Gimnasio Anima · Derechos reservados por el autor</p>
         </div>
         <div className="footer-socials">
-          <a href="#" className="social-btn" title="Facebook">f</a>
-          <a href="#" className="social-btn" title="Instagram">📷</a>
-          <a href="#" className="social-btn" title="WhatsApp">💬</a>
+          <a href="#" className="social-btn">f</a>
+          <a href="#" className="social-btn">📷</a>
+          <a href="#" className="social-btn">💬</a>
         </div>
       </footer>
     </div>
