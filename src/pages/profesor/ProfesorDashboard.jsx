@@ -10,6 +10,7 @@ import { useAuth } from "../../context/AuthContext";
 import { crearNotificacion } from "../../utils/notificaciones";
 import ProfesorNavBar from "./ProfesorNavBar";
 import RutinasProfesor from "./RutinasProfesor";
+import BtnEnviarRutina from "../../components/BtnEnviarRutina";
 
 /* ════════════════════════════════════════════════════════════
    MÓDULO EJERCICIOS (inline, igual al de admin)
@@ -780,6 +781,7 @@ export default function ProfesorDashboard() {
                       <button className="alumnos-btn-action accent" onClick={() => { setAlumnoParaRutina(a); setVista("rutinas"); }}>
                         {a.tieneRutina ? "📋 Ver Rutina" : "➕ Asignar Rutina"}
                       </button>
+                      <BtnEnviarRutina alumno={a} miDoc={miDoc} />
                       <button className="alumnos-btn-action danger" onClick={() => handleDelete(a)}>🗑️</button>
                     </div>
                   </div>
