@@ -164,52 +164,104 @@ function SelectorEjercicio({ ejerciciosDB, etapaId, onSeleccionar, onClose }) {
    FILA DE EJERCICIO dentro de una etapa
 ═══════════════════════════════════════════════════════════ */
 function FilaEjercicio({ item, onChange, onEliminar }) {
+  const [obsOpen, setObsOpen] = useState(false);
+  const tieneObs = item.obs && item.obs.trim().length > 0;
+
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
       background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
-      borderRadius: 12, marginBottom: 6,
+      borderRadius: 12, marginBottom: 6, overflow: "hidden",
     }}>
-      {/* Thumbnail */}
-      <div style={{ width: 42, height: 30, borderRadius: 6, overflow: "hidden", flexShrink: 0, background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {item.videoLink
-          ? <img src={`https://img.youtube.com/vi/${item.videoLink.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/)?.[1]}/default.jpg`}
-            alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          : <span style={{ fontSize: 14, opacity: 0.3 }}>🎬</span>}
+      {/* ── Fila principal ── */}
+      <div className="fila-ej-row" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", flexWrap: "wrap" }}>
+
+        {/* Thumbnail */}
+        <div style={{ width: 40, height: 30, borderRadius: 6, overflow: "hidden", flexShrink: 0, background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {item.videoLink
+            ? <img src={`https://img.youtube.com/vi/${item.videoLink.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/)?.[1]}/default.jpg`}
+              alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            : <span style={{ fontSize: 14, opacity: 0.3 }}>🎬</span>}
+        </div>
+
+        {/* Nombre — ocupa todo el espacio disponible */}
+        <p style={{ fontFamily: FONT_BODY, fontSize: 13, fontWeight: 500, color: "white", flex: 1, minWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>
+          {item.nombre}
+        </p>
+
+        {/* Campos numéricos — en mobile se van a la segunda fila gracias a flexWrap */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          {/* Series */}
+          <input type="number" min={1} max={20}
+            value={item.series || ""}
+            onChange={e => onChange({ ...item, series: e.target.value })}
+            placeholder="S"
+            style={{ ...INPUT_S, width: 44, padding: "6px 6px", textAlign: "center", fontSize: 13 }} />
+          <span style={{ fontFamily: FONT_BODY, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>×</span>
+          {/* Reps */}
+          <input type="text"
+            value={item.reps || ""}
+            onChange={e => onChange({ ...item, reps: e.target.value })}
+            placeholder="Reps"
+            style={{ ...INPUT_S, width: 60, padding: "6px 6px", textAlign: "center", fontSize: 13 }} />
+          {/* Descanso */}
+          <input type="text"
+            value={item.descanso || ""}
+            onChange={e => onChange({ ...item, descanso: e.target.value })}
+            placeholder="60s"
+            style={{ ...INPUT_S, width: 48, padding: "6px 6px", textAlign: "center", fontSize: 12 }} />
+
+          {/* Botón Obs */}
+          <button onClick={() => setObsOpen(o => !o)} style={{
+            fontFamily: FONT_BODY, fontSize: 11, fontWeight: 600,
+            padding: "6px 10px", borderRadius: 8, cursor: "pointer", flexShrink: 0,
+            border: obsOpen || tieneObs
+              ? "1px solid rgba(251,191,36,0.5)"
+              : "1px solid rgba(255,255,255,0.12)",
+            background: obsOpen || tieneObs
+              ? "rgba(251,191,36,0.1)"
+              : "rgba(255,255,255,0.04)",
+            color: obsOpen || tieneObs ? "#fbbf24" : "rgba(255,255,255,0.45)",
+            transition: "all 0.15s",
+            position: "relative",
+          }}>
+            Obs
+            {/* Punto indicador si hay obs guardada */}
+            {tieneObs && !obsOpen && (
+              <span style={{ position: "absolute", top: 3, right: 3, width: 5, height: 5, borderRadius: "50%", background: "#fbbf24" }} />
+            )}
+          </button>
+
+          {/* Eliminar */}
+          <button onClick={onEliminar} style={{
+            background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)",
+            color: "rgba(239,68,68,0.6)", borderRadius: 8, padding: "6px 8px", cursor: "pointer", flexShrink: 0, fontSize: 13,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.14)"; e.currentTarget.style.color = "#f87171"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(239,68,68,0.06)"; e.currentTarget.style.color = "rgba(239,68,68,0.6)"; }}>
+            ✕
+          </button>
+        </div>
       </div>
-      {/* Nombre */}
-      <p style={{ fontFamily: FONT_BODY, fontSize: 13, fontWeight: 500, color: "white", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>
-        {item.nombre}
-      </p>
-      {/* Series */}
-      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-        <input type="number" min={1} max={20}
-          value={item.series || ""}
-          onChange={e => onChange({ ...item, series: e.target.value })}
-          placeholder="S"
-          style={{ ...INPUT_S, width: 46, padding: "6px 8px", textAlign: "center", fontSize: 13 }} />
-        <span style={{ fontFamily: FONT_BODY, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>×</span>
-        <input type="text"
-          value={item.reps || ""}
-          onChange={e => onChange({ ...item, reps: e.target.value })}
-          placeholder="Reps"
-          style={{ ...INPUT_S, width: 64, padding: "6px 8px", textAlign: "center", fontSize: 13 }} />
-      </div>
-      {/* Descanso */}
-      <input type="text"
-        value={item.descanso || ""}
-        onChange={e => onChange({ ...item, descanso: e.target.value })}
-        placeholder="60s"
-        style={{ ...INPUT_S, width: 52, padding: "6px 8px", textAlign: "center", fontSize: 12, flexShrink: 0 }} />
-      {/* Eliminar */}
-      <button onClick={onEliminar} style={{
-        background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)",
-        color: "rgba(239,68,68,0.6)", borderRadius: 8, padding: "5px 8px", cursor: "pointer", flexShrink: 0, fontSize: 13,
-      }}
-        onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.14)"; e.currentTarget.style.color = "#f87171"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "rgba(239,68,68,0.06)"; e.currentTarget.style.color = "rgba(239,68,68,0.6)"; }}>
-        ✕
-      </button>
+
+      {/* ── Panel de observación (se despliega abajo) ── */}
+      {obsOpen && (
+        <div style={{ padding: "0 12px 12px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          <label style={{ ...LABEL_S, marginTop: 10, marginBottom: 6, color: "rgba(251,191,36,0.6)" }}>
+            📝 Observación para este ejercicio
+          </label>
+          <textarea
+            value={item.obs || ""}
+            onChange={e => onChange({ ...item, obs: e.target.value })}
+            placeholder="Ej: Mantené la espalda recta, bajá lento en la fase excéntrica..."
+            rows={2}
+            style={{
+              ...INPUT_S, resize: "vertical", lineHeight: 1.6, fontSize: 13,
+              border: "1px solid rgba(251,191,36,0.25)",
+              background: "rgba(251,191,36,0.04)",
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -483,8 +535,19 @@ function ModalBuilder({ rutinaInicial, ejerciciosDB, onClose, onSave }) {
         zIndex: 301, background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.1)",
         borderRadius: 22, width: "min(800px,97vw)", maxHeight: "94vh", display: "flex", flexDirection: "column",
         boxShadow: "0 40px 100px rgba(0,0,0,0.9)", animation: "fadeUp 0.22s ease",
-      }}>
-        <style>{`@keyframes fadeUp{from{opacity:0;transform:translate(-50%,-46%)}to{opacity:1;transform:translate(-50%,-50%)}}`}</style>
+      }} className="rutina-modal-outer">
+        <style>{`
+          @keyframes fadeUp{from{opacity:0;transform:translate(-50%,-46%)}to{opacity:1;transform:translate(-50%,-50%)}}
+          @media(max-width:600px){
+            .rutina-modal-outer{
+              top:0!important;left:0!important;transform:none!important;
+              width:100vw!important;height:100svh!important;max-height:100svh!important;
+              border-radius:0!important;animation:none!important;
+            }
+            .fila-ej-row>p{min-width:calc(100% - 48px)!important;}
+            .fila-ej-row>div{flex-wrap:wrap!important;}
+          }
+        `}</style>
 
         {/* Header */}
         <div style={{ padding: "20px 24px 0", flexShrink: 0 }}>
