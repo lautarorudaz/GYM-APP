@@ -127,28 +127,73 @@ function FilaEjercicio({ item, onChange, onEliminar }) {
     const tieneObs = item.obs?.trim().length > 0;
     return (
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, marginBottom: 6, overflow: "hidden" }}>
-            <div className="fila-ej-row" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", flexWrap: "wrap" }}>
-                <div style={{ width: 40, height: 30, borderRadius: 6, overflow: "hidden", flexShrink: 0, background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {item.videoLink ? <img src={`https://img.youtube.com/vi/${item.videoLink.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/)?.[1]}/default.jpg`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 14, opacity: 0.3 }}>🎬</span>}
+            <style>{`
+        .fila-ej-inner { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; }
+        .fila-ej-top   { display: flex; align-items: center; gap: 8px; }
+        .fila-ej-row1  { display: flex; align-items: center; gap: 6px; }
+        .fila-ej-row2  { display: flex; align-items: center; gap: 6px; }
+        @media (min-width: 520px) {
+          .fila-ej-inner { flex-direction: row; align-items: center; gap: 8px; padding: 10px 12px; }
+          .fila-ej-top   { flex: 1; min-width: 0; }
+          .fila-ej-row1  { flex-shrink: 0; }
+          .fila-ej-row2  { display: none !important; }
+          .fila-ej-row1  { display: flex !important; }
+          /* en desktop todo en una sola fila */
+          .fila-ej-allcols { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        }
+      `}</style>
+
+            <div className="fila-ej-inner">
+                {/* Thumbnail + Nombre — siempre en la primera fila */}
+                <div className="fila-ej-top" style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ width: 40, height: 30, borderRadius: 6, overflow: "hidden", flexShrink: 0, background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {item.videoLink
+                            ? <img src={`https://img.youtube.com/vi/${item.videoLink.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/)?.[1]}/default.jpg`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            : <span style={{ fontSize: 14, opacity: 0.3 }}>🎬</span>}
+                    </div>
+                    <p style={{ fontFamily: FONT_BODY, fontSize: 13, fontWeight: 500, color: "white", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>
+                        {item.nombre}
+                    </p>
                 </div>
-                <p style={{ fontFamily: FONT_BODY, fontSize: 13, fontWeight: 500, color: "white", flex: 1, minWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>{item.nombre}</p>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                    <input type="number" min={1} max={20} value={item.series || ""} onChange={e => onChange({ ...item, series: e.target.value })} placeholder="S" style={{ ...INPUT_S, width: 44, padding: "6px", textAlign: "center", fontSize: 13 }} />
-                    <span style={{ fontFamily: FONT_BODY, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>×</span>
-                    <input type="text" value={item.reps || ""} onChange={e => onChange({ ...item, reps: e.target.value })} placeholder="Reps" style={{ ...INPUT_S, width: 60, padding: "6px", textAlign: "center", fontSize: 13 }} />
-                    <input type="text" value={item.descanso || ""} onChange={e => onChange({ ...item, descanso: e.target.value })} placeholder="60s" style={{ ...INPUT_S, width: 48, padding: "6px", textAlign: "center", fontSize: 12 }} />
-                    <button onClick={() => setObsOpen(o => !o)} style={{ fontFamily: FONT_BODY, fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, cursor: "pointer", flexShrink: 0, position: "relative", border: obsOpen || tieneObs ? "1px solid rgba(251,191,36,0.5)" : "1px solid rgba(255,255,255,0.12)", background: obsOpen || tieneObs ? "rgba(251,191,36,0.1)" : "rgba(255,255,255,0.04)", color: obsOpen || tieneObs ? "#fbbf24" : "rgba(255,255,255,0.45)", transition: "all 0.15s" }}>
-                        Obs{tieneObs && !obsOpen && <span style={{ position: "absolute", top: 3, right: 3, width: 5, height: 5, borderRadius: "50%", background: "#fbbf24" }} />}
-                    </button>
-                    <button onClick={onEliminar} style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", color: "rgba(239,68,68,0.6)", borderRadius: 8, padding: "6px 8px", cursor: "pointer", flexShrink: 0, fontSize: 13 }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.14)"; e.currentTarget.style.color = "#f87171" }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(239,68,68,0.06)"; e.currentTarget.style.color = "rgba(239,68,68,0.6)" }}>✕</button>
+
+                {/* Controles — en mobile: fila 1 = Series × Reps | fila 2 = Descanso + Obs + X */}
+                {/* En desktop todo junto gracias al CSS de arriba */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }} className="fila-ej-controles">
+                    <style>{`
+            @media (min-width: 520px) {
+              .fila-ej-controles { flex-direction: row !important; align-items: center; }
+              .fila-ej-r2 { margin-top: 0 !important; }
+            }
+          `}</style>
+
+                    {/* Fila 1: Series × Reps */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <input type="number" min={1} max={20} value={item.series || ""} onChange={e => onChange({ ...item, series: e.target.value })} placeholder="S"
+                            style={{ ...INPUT_S, width: 44, padding: "6px", textAlign: "center", fontSize: 13 }} />
+                        <span style={{ fontFamily: FONT_BODY, fontSize: 11, color: "rgba(255,255,255,0.3)", flexShrink: 0 }}>×</span>
+                        <input type="text" value={item.reps || ""} onChange={e => onChange({ ...item, reps: e.target.value })} placeholder="Reps"
+                            style={{ ...INPUT_S, width: 60, padding: "6px", textAlign: "center", fontSize: 13 }} />
+                    </div>
+
+                    {/* Fila 2: Descanso + Obs + X */}
+                    <div className="fila-ej-r2" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <input type="text" value={item.descanso || ""} onChange={e => onChange({ ...item, descanso: e.target.value })} placeholder="60s"
+                            style={{ ...INPUT_S, width: 56, padding: "6px", textAlign: "center", fontSize: 12 }} />
+                        <button onClick={() => setObsOpen(o => !o)} style={{ fontFamily: FONT_BODY, fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, cursor: "pointer", flexShrink: 0, position: "relative", border: obsOpen || tieneObs ? "1px solid rgba(251,191,36,0.5)" : "1px solid rgba(255,255,255,0.12)", background: obsOpen || tieneObs ? "rgba(251,191,36,0.1)" : "rgba(255,255,255,0.04)", color: obsOpen || tieneObs ? "#fbbf24" : "rgba(255,255,255,0.45)", transition: "all 0.15s" }}>
+                            Obs{tieneObs && !obsOpen && <span style={{ position: "absolute", top: 3, right: 3, width: 5, height: 5, borderRadius: "50%", background: "#fbbf24" }} />}
+                        </button>
+                        <button onClick={onEliminar} style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", color: "rgba(239,68,68,0.6)", borderRadius: 8, padding: "6px 8px", cursor: "pointer", flexShrink: 0, fontSize: 13 }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.14)"; e.currentTarget.style.color = "#f87171" }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(239,68,68,0.06)"; e.currentTarget.style.color = "rgba(239,68,68,0.6)" }}>✕</button>
+                    </div>
                 </div>
             </div>
+
             {obsOpen && (
                 <div style={{ padding: "0 12px 12px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
                     <label style={{ ...LABEL_S, marginTop: 10, marginBottom: 6, color: "rgba(251,191,36,0.6)" }}>📝 Observación</label>
-                    <textarea value={item.obs || ""} onChange={e => onChange({ ...item, obs: e.target.value })} placeholder="Ej: Mantené la espalda recta..." rows={2} style={{ ...INPUT_S, resize: "vertical", lineHeight: 1.6, fontSize: 13, border: "1px solid rgba(251,191,36,0.25)", background: "rgba(251,191,36,0.04)" }} />
+                    <textarea value={item.obs || ""} onChange={e => onChange({ ...item, obs: e.target.value })} placeholder="Ej: Mantené la espalda recta..." rows={2}
+                        style={{ ...INPUT_S, resize: "vertical", lineHeight: 1.6, fontSize: 13, border: "1px solid rgba(251,191,36,0.25)", background: "rgba(251,191,36,0.04)" }} />
                 </div>
             )}
         </div>

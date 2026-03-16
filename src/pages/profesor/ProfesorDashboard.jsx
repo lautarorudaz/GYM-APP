@@ -11,6 +11,8 @@ import { crearNotificacion } from "../../utils/notificaciones";
 import ProfesorNavBar from "./ProfesorNavBar";
 import RutinasProfesor from "./RutinasProfesor";
 import BtnEnviarRutina from "../../components/BtnEnviarRutina";
+import HistorialRutinas from "../../components/HistorialRutinas";
+import EditorRutinaAlumno from "../../components/EditorRutinaAlumno";
 
 /* ════════════════════════════════════════════════════════════
    MÓDULO EJERCICIOS (inline, igual al de admin)
@@ -323,6 +325,10 @@ export default function ProfesorDashboard() {
 
   // Para asignar rutina desde el listado de alumnos
   const [alumnoParaRutina, setAlumnoParaRutina] = useState(null);
+  // Para ver historial de rutinas de un alumno
+  const [alumnoHistorial, setAlumnoHistorial] = useState(null);
+  // Para editar la rutina activa de un alumno específico
+  const [alumnoEditorRutina, setAlumnoEditorRutina] = useState(null);
 
   useEffect(() => {
     if (location.state?.vista) setVista(location.state.vista);
@@ -428,6 +434,15 @@ export default function ProfesorDashboard() {
   const calcularEdad = (nac) => {
     if (!nac) return "";
     return Math.floor((new Date() - new Date(nac)) / (365.25 * 24 * 60 * 60 * 1000));
+  };
+
+  const handleEliminarRutina = async (alumno) => {
+    if (!window.confirm(`¿Seguro que querés quitarle la rutina activa a ${alumno.nombre}?\n\nLa rutina quedará en el historial del alumno, solo se desvincula como rutina activa.`)) return;
+    try {
+      // Solo marcar al alumno como sin rutina activa — NO borrar de rutinas_asignadas
+      await updateDoc(doc(db, "usuarios", alumno.id), { tieneRutina: false });
+      cargarDatos();
+    } catch (e) { alert("Error al quitar la rutina: " + e.message); }
   };
 
   const handleEdit = (alumno) => { setAlumnoEdit(alumno); setEditForm({ ...alumno }); setModalEdit(true); };
@@ -778,9 +793,23 @@ export default function ProfesorDashboard() {
                     <div className="alumnos-actions" style={{ display: "flex", gap: 8 }}>
                       <button className="alumnos-btn-action" onClick={() => handleEdit(a)}>✏️ Editar</button>
                       <button className="alumnos-btn-action" onClick={() => { setAlumnoActivoChat(a); setVista("chat"); }}>💬 Chat</button>
-                      <button className="alumnos-btn-action accent" onClick={() => { setAlumnoParaRutina(a); setVista("rutinas"); }}>
-                        {a.tieneRutina ? "📋 Ver Rutina" : "➕ Asignar Rutina"}
+                      <button className="alumnos-btn-action" onClick={() => setAlumnoHistorial(a)} title="Ver historial de rutinas">
+                        📋 Historial
                       </button>
+                      {a.tieneRutina ? (
+                        <button className="alumnos-btn-action accent" onClick={() => setAlumnoEditorRutina(a)}>
+                          ✏️ Ver/Editar Rutina
+                        </button>
+                      ) : (
+                        <button className="alumnos-btn-action accent" onClick={() => { setAlumnoParaRutina(a); setVista("rutinas"); }}>
+                          ➕ Asignar Rutina
+                        </button>
+                      )}
+                      {a.tieneRutina && (
+                        <button className="alumnos-btn-action danger" onClick={() => handleEliminarRutina(a)} title="Quitar rutina asignada">
+                          📋✕
+                        </button>
+                      )}
                       <BtnEnviarRutina alumno={a} miDoc={miDoc} />
                       <button className="alumnos-btn-action danger" onClick={() => handleDelete(a)}>🗑️</button>
                     </div>
@@ -910,6 +939,25 @@ export default function ProfesorDashboard() {
           </div>
         )}
       </div>
+
+      {/* ══ MODAL EDITOR RUTINA ALUMNO ═════════════════════════ */}
+      {alumnoEditorRutina && (
+        <EditorRutinaAlumno
+          alumno={alumnoEditorRutina}
+          miDoc={miDoc}
+          onClose={() => setAlumnoEditorRutina(null)}
+          onGuardado={() => cargarDatos()}
+        />
+      )}
+
+      {/* ══ MODAL HISTORIAL RUTINAS ════════════════════════════ */}
+      {alumnoHistorial && (
+        <HistorialRutinas
+          alumno={alumnoHistorial}
+          miDoc={miDoc}
+          onClose={() => setAlumnoHistorial(null)}
+        />
+      )}
 
       {/* ══ MODAL EDICIÓN ALUMNO ════════════════════════════ */}
       {modalEdit && (

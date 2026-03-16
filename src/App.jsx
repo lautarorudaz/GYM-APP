@@ -10,7 +10,7 @@ import RutinaAlumno from "./pages/alumno/RutinaAlumno";
 import AlumnosAdmin from "./pages/admin/AlumnosAdmin";
 import EjerciciosAdmin from "./pages/admin/EjerciciosAdmin";
 import RutinasAdmin from "./pages/admin/RutinasAdmin";
-
+import DescargaRutina from "./pages/DescargaRutina";
 
 function App() {
   return (
@@ -18,6 +18,7 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<Login />} />
+          <Route path="/rutina/:rutinaId" element={<DescargaRutina />} />
           <Route path="/admin" element={<ProtectedRoute rol="admin"><AdminDashboard /></ProtectedRoute>} />
           <Route path="/profesor" element={<ProtectedRoute rol="profesor"><ProfesorDashboard /></ProtectedRoute>} />
           <Route path="/alumno" element={<ProtectedRoute rol="alumno"><AlumnoDashboard /></ProtectedRoute>} />
