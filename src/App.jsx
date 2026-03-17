@@ -11,6 +11,7 @@ import AlumnosAdmin from "./pages/admin/AlumnosAdmin";
 import EjerciciosAdmin from "./pages/admin/EjerciciosAdmin";
 import RutinasAdmin from "./pages/admin/RutinasAdmin";
 import DescargaRutina from "./pages/DescargaRutina";
+import VistaRutina from "./pages/VistaRutina";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="/admin/alumnos" element={<ProtectedRoute rol="admin"><AlumnosAdmin /></ProtectedRoute>} />
           <Route path="/admin/ejercicios" element={<ProtectedRoute rol="admin"><EjerciciosAdmin /></ProtectedRoute>} />
           <Route path="/admin/rutinas" element={<ProtectedRoute rol="admin"><RutinasAdmin /></ProtectedRoute>} />
+          <Route path="/ver-rutina/:rutinaId" element={<VistaRutina />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

@@ -1,15 +1,14 @@
 // src/utils/enviarRutinaPDF.js
 
-export const EMAILJS_SERVICE_ID = "service_lq8y3ws";
+export const EMAILJS_SERVICE_ID = "TU_SERVICE_ID";
 export const EMAILJS_TEMPLATE_ID = "template_mg74ulg";
-export const EMAILJS_PUBLIC_KEY = "plED-1pO4KhQI_VX-";
+export const EMAILJS_PUBLIC_KEY = "TU_PUBLIC_KEY";
 
 // ── URL base de la app deployada ─────────────────────────────────────────────
-// Cuando hagas deploy con Firebase Hosting vas a obtener una URL tipo:
-//   https://gym-app-XXXXXX.web.app
-// Reemplazá este valor con esa URL (sin barra al final).
-// En localhost funciona igual para desarrollo.
 export const APP_BASE_URL = import.meta.env.VITE_APP_URL || "https://gym-app-636cb.web.app";
+
+// Genera el link público de la rutina (para email, WhatsApp, etc.)
+export const getLinkRutina = (rutinaId) => `${APP_BASE_URL}/ver-rutina/${rutinaId}`;
 
 // ══ DISEÑO PDF ════════════════════════════════════════════════════════════════
 const C = {
@@ -174,8 +173,8 @@ export async function enviarEmailNotificacion(rutina, alumno, profesor, mensajeP
     const tej = sems.reduce((a, s) => a + (s.dias?.reduce((b, d) => b + ["movilidad", "activacion", "general"].reduce((c, et) => c + (d.etapas?.[et]?.ejercicios?.length || 0), 0), 0) || 0), 0);
     const resumen = `${sems.length} semana${sems.length !== 1 ? "s" : ""} · ${tdias} días · ${tej} ejercicios`;
 
-    // Link directo a la página de descarga (funciona cuando la app está deployada)
-    const linkDescarga = `${APP_BASE_URL}/rutina/${rutina.id}`;
+    // Link directo a la página de vista de rutina
+    const linkDescarga = `${APP_BASE_URL}/ver-rutina/${rutina.id}`;
 
     const emailjs = await import("@emailjs/browser");
 
